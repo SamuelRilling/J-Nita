@@ -35,12 +35,28 @@ A modern web-based OCR (Optical Character Recognition) application with image co
 
 ### Deployment
 
-#### Option 1: GitHub Pages (Frontend Only)
+### Frontend (GitHub Pages)
 
 1. Push the repository to GitHub
-2. Enable GitHub Pages in repository settings
+2. Go to Settings → Pages
 3. Set source to `main` branch and `/ (root)` folder
-4. Note: You'll need a separate backend service (see below)
+4. Your site will be available at `https://yourusername.github.io/OCR5/`
+
+### Backend Deployment ⚠️ Required
+
+**The frontend requires a backend API to function.** See [DEPLOY_BACKEND.md](DEPLOY_BACKEND.md) for detailed instructions.
+
+**Quick Start (Railway - Recommended):**
+1. Sign up at [railway.app](https://railway.app)
+2. New Project → Deploy from GitHub
+3. Select your OCR5 repository
+4. Railway auto-detects and deploys
+5. Copy the URL and add it to "Backend Configuration" in the web app
+
+**Other Options:**
+- **Render**: Free tier available, see [DEPLOY_BACKEND.md](DEPLOY_BACKEND.md)
+- **Heroku**: Paid plans, see [DEPLOY_BACKEND.md](DEPLOY_BACKEND.md)
+- **PythonAnywhere**: Free tier available, see [DEPLOY_BACKEND.md](DEPLOY_BACKEND.md)
 
 #### Option 2: Full Stack Deployment
 

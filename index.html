@@ -213,6 +213,18 @@
             border: 1px solid #bee5eb;
         }
 
+        .alert.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .description {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
         /* Configuration Section */
         .section {
             margin-bottom: 20px;
@@ -376,10 +388,33 @@
                 <button class="btn btn-secondary" id="resetBtn">🔄 Reset</button>
             </div>
 
+            <!-- Backend Configuration -->
+            <div class="section">
+                <div class="section-header" onclick="toggleSection(this)">
+                    <span>🔗 Backend Configuration</span>
+                    <span>▼</span>
+                </div>
+                <div class="section-content active" id="backendSection">
+                    <div class="form-group">
+                        <label>Backend API URL</label>
+                        <div class="description" style="font-size: 0.9em; color: #666; margin-bottom: 8px;">
+                            Enter your backend URL (e.g., https://your-app.herokuapp.com)
+                        </div>
+                        <input type="text" id="backendUrl" placeholder="https://your-backend-url.herokuapp.com" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 4px;">
+                        <button class="btn btn-secondary" onclick="testBackendConnection()" style="margin-top: 10px;">Test Connection</button>
+                        <div id="backendStatus" style="margin-top: 10px; padding: 10px; border-radius: 4px; display: none;"></div>
+                    </div>
+                    <div class="alert info" style="margin-top: 15px;">
+                        <strong>Need a backend?</strong> Deploy the backend to Heroku, Railway, or Render. 
+                        See <a href="https://github.com/samuelrilling/OCR5#deployment" target="_blank">deployment instructions</a>.
+                    </div>
+                </div>
+            </div>
+
             <!-- Configuration Section -->
             <div class="section">
                 <div class="section-header" onclick="toggleSection(this)">
-                    <span>⚙️ Configuration</span>
+                    <span>⚙️ OCR Configuration</span>
                     <span>▼</span>
                 </div>
                 <div class="section-content" id="configSection">
@@ -421,12 +456,51 @@
     </div>
 
     <script>
-        const API_BASE = window.location.origin.includes('github.io') 
-            ? 'https://your-backend-url.herokuapp.com'  // Replace with your backend URL
-            : 'http://localhost:5000';
+        // Get API base URL from localStorage or default
+        function getApiBase() {
+            const saved = localStorage.getItem('ocr5_backend_url');
+            if (saved && saved !== 'https://your-backend-url.herokuapp.com') {
+                return saved;
+            }
+            // Default based on environment
+            if (window.location.origin.includes('github.io')) {
+                return null; // No default for GitHub Pages - user must configure
+            }
+            return 'http://localhost:5000';
+        }
 
+        let API_BASE = getApiBase();
         let currentImage = null;
         let conditionedImage = null;
+
+        // Initialize backend URL input
+        window.addEventListener('DOMContentLoaded', function() {
+            const backendUrlInput = document.getElementById('backendUrl');
+            if (API_BASE) {
+                backendUrlInput.value = API_BASE;
+            } else {
+                backendUrlInput.value = '';
+            }
+            
+            backendUrlInput.addEventListener('change', function() {
+                const url = this.value.trim();
+                if (url && url !== 'https://your-backend-url.herokuapp.com') {
+                    API_BASE = url;
+                    localStorage.setItem('ocr5_backend_url', url);
+                    testBackendConnection();
+                } else {
+                    API_BASE = null;
+                    localStorage.removeItem('ocr5_backend_url');
+                }
+            });
+
+            // Check backend on load
+            if (API_BASE) {
+                testBackendConnection();
+            } else {
+                showBackendStatus('warning', 'Please configure your backend URL above');
+            }
+        });
 
         // Initialize
         document.getElementById('fileInput').addEventListener('change', handleFileSelect);
@@ -532,7 +606,43 @@
             ctx.drawImage(img, 0, 0, width, height);
         }
 
+        function testBackendConnection() {
+            if (!API_BASE) {
+                showBackendStatus('error', 'No backend URL configured');
+                return;
+            }
+
+            const statusDiv = document.getElementById('backendStatus');
+            statusDiv.style.display = 'block';
+            statusDiv.innerHTML = '<span class="loading"></span> Testing connection...';
+            statusDiv.className = 'alert info';
+
+            fetch(`${API_BASE}/api/health`)
+                .then(response => {
+                    if (response.ok) {
+                        showBackendStatus('success', '✓ Backend connected successfully!');
+                    } else {
+                        showBackendStatus('error', '✗ Backend responded with error');
+                    }
+                })
+                .catch(error => {
+                    showBackendStatus('error', `✗ Cannot connect to backend: ${error.message}`);
+                });
+        }
+
+        function showBackendStatus(type, message) {
+            const statusDiv = document.getElementById('backendStatus');
+            statusDiv.style.display = 'block';
+            statusDiv.textContent = message;
+            statusDiv.className = `alert ${type}`;
+        }
+
         async function conditionImage() {
+            if (!API_BASE) {
+                showAlert('error', 'Please configure your backend URL in the Backend Configuration section');
+                return;
+            }
+
             if (!currentImage) {
                 showAlert('error', 'Please upload an image first');
                 return;
@@ -581,6 +691,11 @@
         }
 
         async function processOCR() {
+            if (!API_BASE) {
+                showAlert('error', 'Please configure your backend URL in the Backend Configuration section');
+                return;
+            }
+
             if (!conditionedImage) {
                 showAlert('error', 'Please condition the image first');
                 return;
@@ -663,10 +778,7 @@
             }
         }
 
-        // Check API connection on load
-        fetch(`${API_BASE}/api/health`)
-            .then(() => showAlert('info', 'Connected to OCR API'))
-            .catch(() => showAlert('error', 'Cannot connect to API. Make sure the backend server is running.'));
+        // Backend connection check is now handled in DOMContentLoaded
     </script>
 </body>
 </html>
