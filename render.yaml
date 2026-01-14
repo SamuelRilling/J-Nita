@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: ocr5-backend
+    name: j-nita-backend
     env: python
     buildCommand: pip install -r requirements.txt
     startCommand: python run.py

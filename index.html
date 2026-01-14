@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OCR5 - Web-Based OCR Pipeline</title>
+    <title>J-Nita v5.0 - Web-Based OCR Pipeline</title>
     <style>
         * {
             margin: 0;
@@ -335,7 +335,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🔍 OCR5 - Web-Based OCR Pipeline</h1>
+            <h1>🔍 J-Nita v5.0 - Web-Based OCR Pipeline</h1>
             <p>Upload, condition, and extract text from images</p>
         </div>
 
@@ -406,7 +406,7 @@
                     </div>
                     <div class="alert info" style="margin-top: 15px;">
                         <strong>Need a backend?</strong> Deploy the backend to Heroku, Railway, or Render. 
-                        See <a href="https://github.com/samuelrilling/OCR5#deployment" target="_blank">deployment instructions</a>.
+                        See <a href="https://github.com/samuelrilling/J-Nita#deployment" target="_blank">deployment instructions</a>.
                     </div>
                 </div>
             </div>
@@ -458,7 +458,7 @@
     <script>
         // Get API base URL from localStorage or default
         function getApiBase() {
-            const saved = localStorage.getItem('ocr5_backend_url');
+            const saved = localStorage.getItem('jnita_backend_url');
             if (saved && saved !== 'https://your-backend-url.herokuapp.com') {
                 return saved;
             }
@@ -486,11 +486,11 @@
                 const url = this.value.trim();
                 if (url && url !== 'https://your-backend-url.herokuapp.com') {
                     API_BASE = url;
-                    localStorage.setItem('ocr5_backend_url', url);
+                    localStorage.setItem('jnita_backend_url', url);
                     testBackendConnection();
                 } else {
                     API_BASE = null;
-                    localStorage.removeItem('ocr5_backend_url');
+                    localStorage.removeItem('jnita_backend_url');
                 }
             });
 

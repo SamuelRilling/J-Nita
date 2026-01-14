@@ -1,4 +1,4 @@
-# OCR5 - Web-Based OCR Pipeline
+# J-Nita v5.0 - Web-Based OCR Pipeline
 
 A modern web-based OCR (Optical Character Recognition) application with image conditioning and text extraction capabilities.
 
@@ -40,7 +40,7 @@ A modern web-based OCR (Optical Character Recognition) application with image co
 1. Push the repository to GitHub
 2. Go to Settings → Pages
 3. Set source to `main` branch and `/ (root)` folder
-4. Your site will be available at `https://yourusername.github.io/OCR5/`
+4. Your site will be available at `https://yourusername.github.io/J-Nita/`
 
 ### Backend Deployment ⚠️ Required
 
@@ -49,7 +49,7 @@ A modern web-based OCR (Optical Character Recognition) application with image co
 **Quick Start (Railway - Recommended):**
 1. Sign up at [railway.app](https://railway.app)
 2. New Project → Deploy from GitHub
-3. Select your OCR5 repository
+3. Select your J-Nita repository
 4. Railway auto-detects and deploys
 5. Copy the URL and add it to "Backend Configuration" in the web app
 
@@ -73,7 +73,7 @@ A modern web-based OCR (Optical Character Recognition) application with image co
 ## Project Structure
 
 ```
-OCR5/
+J-Nita/
 ├── index.html              # Main web interface
 ├── app.py                  # Flask backend API
 ├── image_conditioner.py    # Image processing engine

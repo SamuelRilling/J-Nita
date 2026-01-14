@@ -1,5 +1,5 @@
 """
-Flask backend API for OCR5 web application
+Flask backend API for J-Nita v5.0 web application
 Handles image conditioning and OCR processing
 """
 

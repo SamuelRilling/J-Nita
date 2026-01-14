@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Simple script to run the OCR5 web application
+Simple script to run the J-Nita v5.0 web application
 """
 
 from app import app
