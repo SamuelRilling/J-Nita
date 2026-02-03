@@ -388,36 +388,6 @@
                 <button class="btn btn-secondary" id="resetBtn">🔄 Reset</button>
             </div>
 
-            <!-- Backend Configuration -->
-            <div class="section">
-                <div class="section-header" onclick="toggleSection(this)">
-                    <span>🔗 Backend Configuration</span>
-                    <span>▼</span>
-                </div>
-                <div class="section-content active" id="backendSection">
-                    <div class="form-group">
-                        <label>Backend API URL</label>
-                        <div class="description" style="font-size: 0.9em; color: #666; margin-bottom: 8px;">
-                            Enter your backend URL (e.g., https://your-app.herokuapp.com)
-                        </div>
-                        <input type="text" id="backendUrl" placeholder="https://your-backend-url.herokuapp.com" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 4px;">
-                        <button class="btn btn-secondary" onclick="testBackendConnection()" style="margin-top: 10px;">Test Connection</button>
-                        <div id="backendStatus" style="margin-top: 10px; padding: 10px; border-radius: 4px; display: none;"></div>
-                    </div>
-                    <div class="alert warning" style="margin-top: 15px; display: block;">
-                        <strong>⚠️ Backend Required</strong> This app needs a backend API server. 
-                        <ul style="margin: 10px 0 0 20px; padding: 0;">
-                            <li>Deploy backend to <strong>Railway</strong> (recommended), Render, or Heroku</li>
-                            <li>Copy your backend URL (e.g., <code>https://j-nita-production.up.railway.app</code>)</li>
-                            <li>Paste it in the field above and click "Test Connection"</li>
-                        </ul>
-                        <p style="margin-top: 10px;">
-                            <a href="https://github.com/samuelrilling/J-Nita#deployment" target="_blank">📖 View deployment instructions</a>
-                        </p>
-                    </div>
-                </div>
-            </div>
-
             <!-- Configuration Section -->
             <div class="section">
                 <div class="section-header" onclick="toggleSection(this)">
@@ -463,68 +433,9 @@
     </div>
 
     <script>
-        // Get API base URL from localStorage or default
-        function getApiBase() {
-            const saved = localStorage.getItem('jnita_backend_url');
-            if (saved && saved !== 'https://your-backend-url.herokuapp.com' && saved.trim() !== '') {
-                return saved.trim();
-            }
-            // Default based on environment
-            if (window.location.origin.includes('github.io')) {
-                return null; // No default for GitHub Pages - user must configure
-            }
-            return 'http://localhost:5000';
-        }
-
-        let API_BASE = getApiBase();
+        const API_BASE = 'https://j-nita.onrender.com';
         let currentImage = null;
         let conditionedImage = null;
-
-        // Initialize backend URL input
-        window.addEventListener('DOMContentLoaded', function() {
-            const backendUrlInput = document.getElementById('backendUrl');
-            const saved = localStorage.getItem('jnita_backend_url');
-            
-            // Clear any placeholder URLs
-            if (saved === 'https://your-backend-url.herokuapp.com') {
-                localStorage.removeItem('jnita_backend_url');
-                API_BASE = null;
-                backendUrlInput.value = '';
-            } else if (API_BASE) {
-                backendUrlInput.value = API_BASE;
-            } else {
-                backendUrlInput.value = '';
-            }
-            
-            // Update API_BASE when input changes
-            backendUrlInput.addEventListener('input', function() {
-                const url = this.value.trim();
-                if (url && url !== 'https://your-backend-url.herokuapp.com' && url.length > 0) {
-                    // Validate URL format
-                    if (url.startsWith('http://') || url.startsWith('https://')) {
-                        API_BASE = url;
-                        localStorage.setItem('jnita_backend_url', url);
-                    }
-                } else {
-                    API_BASE = null;
-                    localStorage.removeItem('jnita_backend_url');
-                }
-            });
-
-            // Test connection when user presses Enter or clicks outside
-            backendUrlInput.addEventListener('blur', function() {
-                if (API_BASE) {
-                    testBackendConnection();
-                }
-            });
-
-            // Check backend on load (only if configured)
-            if (API_BASE) {
-                testBackendConnection();
-            } else {
-                showBackendStatus('warning', '⚠️ Please configure your backend URL above. Deploy the backend to Railway, Render, or Heroku first.');
-            }
-        });
 
         // Initialize
         document.getElementById('fileInput').addEventListener('change', handleFileSelect);
@@ -630,66 +541,7 @@
             ctx.drawImage(img, 0, 0, width, height);
         }
 
-        function testBackendConnection() {
-            const backendUrlInput = document.getElementById('backendUrl');
-            const url = backendUrlInput.value.trim();
-            
-            if (!url || url === '' || url === 'https://your-backend-url.herokuapp.com') {
-                showBackendStatus('error', 'Please enter a valid backend URL');
-                API_BASE = null;
-                return;
-            }
-
-            // Validate URL format
-            if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                showBackendStatus('error', 'URL must start with http:// or https://');
-                API_BASE = null;
-                return;
-            }
-
-            // Remove trailing slash
-            const cleanUrl = url.replace(/\/+$/, '');
-            API_BASE = cleanUrl;
-            backendUrlInput.value = cleanUrl;
-            localStorage.setItem('jnita_backend_url', cleanUrl);
-
-            const statusDiv = document.getElementById('backendStatus');
-            statusDiv.style.display = 'block';
-            statusDiv.innerHTML = '<span class="loading"></span> Testing connection...';
-            statusDiv.className = 'alert info';
-
-            fetch(`${API_BASE}/api/health`)
-                .then(response => {
-                    if (response.ok) {
-                        showBackendStatus('success', '✓ Backend connected successfully! You can now use the app.');
-                    } else {
-                        showBackendStatus('error', `✗ Backend responded with error (${response.status})`);
-                    }
-                })
-                .catch(error => {
-                    if (error.message.includes('CORS')) {
-                        showBackendStatus('error', '✗ CORS error: Make sure the backend allows requests from GitHub Pages. Check backend CORS configuration.');
-                    } else if (error.message.includes('Failed to fetch')) {
-                        showBackendStatus('error', `✗ Cannot reach backend. Check if the URL is correct and the backend is running.`);
-                    } else {
-                        showBackendStatus('error', `✗ Connection error: ${error.message}`);
-                    }
-                });
-        }
-
-        function showBackendStatus(type, message) {
-            const statusDiv = document.getElementById('backendStatus');
-            statusDiv.style.display = 'block';
-            statusDiv.textContent = message;
-            statusDiv.className = `alert ${type}`;
-        }
-
         async function conditionImage() {
-            if (!API_BASE) {
-                showAlert('error', 'Please configure your backend URL in the Backend Configuration section');
-                return;
-            }
-
             if (!currentImage) {
                 showAlert('error', 'Please upload an image first');
                 return;
@@ -738,11 +590,6 @@
         }
 
         async function processOCR() {
-            if (!API_BASE) {
-                showAlert('error', 'Please configure your backend URL in the Backend Configuration section');
-                return;
-            }
-
             if (!conditionedImage) {
                 showAlert('error', 'Please condition the image first');
                 return;
@@ -825,7 +672,6 @@
             }
         }
 
-        // Backend connection check is now handled in DOMContentLoaded
     </script>
 </body>
 </html>
