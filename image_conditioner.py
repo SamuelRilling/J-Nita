@@ -332,6 +332,23 @@ class ImageConditioner:
         cv2.imwrite(output_path, conditioned, save_params)
         logger.info(f"  Output size: {conditioned.shape[1]}x{conditioned.shape[0]} px")
         logger.info(f"  Saved: {output_filename} (png_compression={save_params[1]})")
+
+    def condition_image_array(self, image: np.ndarray, filename: Optional[str] = None) -> np.ndarray:
+        """
+        Condition a single in-memory image and return the processed result.
+
+        Args:
+            image: OpenCV BGR image (numpy array)
+            filename: Optional filename for debug output labeling
+
+        Returns:
+            Conditioned image (binary/enhanced)
+        """
+        self.current_filename = filename or self.current_filename
+        upright = self._ensure_upright(image)
+        if upright is not image:
+            logger.info("  Image was rotated upright before processing")
+        return self._condition_image(upright, filename)
     
     def _condition_image(self, image: np.ndarray, filename: Optional[str] = None) -> np.ndarray:
         """

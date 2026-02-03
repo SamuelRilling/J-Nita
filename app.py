@@ -91,16 +91,10 @@ def condition_image():
                 else:
                     ic_config[key] = value
         
-        # Create temporary file for processing
-        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as tmp_input:
-            cv2.imwrite(tmp_input.name, image_array)
-            input_path = tmp_input.name
-        
-        # Create temporary output directory
+        # Create temporary output directory (used for debug output paths, even in-memory)
         with tempfile.TemporaryDirectory() as tmp_output:
-            # Initialize conditioner
             conditioner = ImageConditioner(
-                input_folder=os.path.dirname(input_path),
+                input_folder=tmp_output,
                 output_folder=tmp_output,
                 strength=ic_config.get('strength', {}).get('value', 10),
                 adaptive_block_size=ic_config.get('adaptive_block_size', {}).get('value'),
@@ -118,26 +112,11 @@ def condition_image():
                 min_scale_for_zero=ic_config.get('min_scale_for_zero', {}).get('value'),
                 debug_mode=False
             )
-            
-            # Process image
-            filename = os.path.basename(input_path)
-            conditioner._process_single_image(input_path, filename)
-            
-            # Find output file
-            output_files = [f for f in os.listdir(tmp_output) if f.endswith('.png')]
-            if not output_files:
-                return jsonify({"error": "No output image generated"}), 500
-            
-            output_path = os.path.join(tmp_output, output_files[0])
-            
-            # Read and encode output image
-            output_image = cv2.imread(output_path)
+
+            output_image = conditioner.condition_image_array(image_array, filename="upload")
             _, buffer = cv2.imencode('.png', output_image)
             output_base64 = base64.b64encode(buffer).decode('utf-8')
-            
-            # Cleanup
-            os.unlink(input_path)
-            
+
             return jsonify({
                 "conditioned_image": f"data:image/png;base64,{output_base64}",
                 "success": True
