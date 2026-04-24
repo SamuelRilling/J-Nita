@@ -486,6 +486,60 @@
             text-align: center;
             margin-top: 4rem;
         }
+
+        /* Advanced Mode View */
+        .advanced-container {
+            display: none;
+            margin-top: 2rem;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .advanced-container.active {
+            display: block;
+        }
+
+        .stage-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .stage-card {
+            background: white;
+            border-radius: 0.75rem;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .stage-card h4 {
+            padding: 0.75rem;
+            font-size: 0.875rem;
+            background: #f8fafc;
+            border-bottom: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .stage-img-container {
+            height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f1f5f9;
+            padding: 1rem;
+        }
+
+        .stage-img-container img, .stage-img-container canvas {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
@@ -496,13 +550,6 @@
                 <p>Professional Handwriting-Optimized OCR Studio</p>
             </div>
             <div class="header-actions">
-                <div class="toggle-container">
-                    <span class="toggle-label">Handwriting Mode</span>
-                    <label class="switch">
-                        <input type="checkbox" id="handwritingMode">
-                        <span class="slider"></span>
-                    </label>
-                </div>
                 <div class="status-pill" id="backendStatus">
                     <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#10b981; margin-right:5px;"></span>
                     Backend Online
@@ -536,7 +583,10 @@
             <div class="card">
                 <div class="card-header">
                     <span class="card-title">2. Pre-Processing</span>
-                    <div id="processingBadge" style="display:none; font-size: 0.75rem; background: #e0e7ff; color: #4338ca; padding: 0.125rem 0.5rem; border-radius: 9999px;">Active</div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" id="advancedModeBtn">Advanced Mode</button>
+                        <div id="processingBadge" style="display:none; font-size: 0.75rem; background: #e0e7ff; color: #4338ca; padding: 0.125rem 0.5rem; border-radius: 9999px;">Active</div>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="preview-container" id="conditionedPreview">
@@ -586,6 +636,40 @@
             <button class="btn btn-primary" id="conditionBtn" disabled>🖼️ Prepare Image</button>
             <button class="btn btn-primary" id="ocrBtn" disabled>🔍 Run OCR</button>
             <button class="btn btn-secondary" id="resetBtn">🔄 Start Over</button>
+        </div>
+
+        <!-- Advanced Processing Stages -->
+        <div class="advanced-container" id="advancedContainer">
+            <div class="card" style="height: auto; margin-bottom: 2rem;">
+                <div class="card-header">
+                    <span class="card-title">🔬 Advanced Processing Stages</span>
+                </div>
+                <div class="card-body">
+                    <div class="stage-grid" id="stageGrid">
+                        <div class="stage-card">
+                            <h4>1. Page Detection/Crop</h4>
+                            <div class="stage-img-container">
+                                <div class="empty-state">No data</div>
+                                <img id="stage-crop" style="display:none;">
+                            </div>
+                        </div>
+                        <div class="stage-card">
+                            <h4>2. Resizing</h4>
+                            <div class="stage-img-container">
+                                <div class="empty-state">No data</div>
+                                <img id="stage-resize" style="display:none;">
+                            </div>
+                        </div>
+                        <div class="stage-card">
+                            <h4>3. Adaptive Threshold</h4>
+                            <div class="stage-img-container">
+                                <div class="empty-state">No data</div>
+                                <img id="stage-threshold" style="display:none;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Configuration Card -->
@@ -704,9 +788,9 @@
                 img.onload = () => {
                     currentImage = e.target.result;
                     originalImgEl = img;
-                    renderCanvas(img, 'originalCanvas');
                     document.getElementById('dropzone').style.display = 'none';
                     document.getElementById('originalPreview').style.display = 'flex';
+                    renderCanvas(img, 'originalCanvas');
                     conditionBtn.disabled = false;
                 };
                 img.src = e.target.result;
@@ -719,8 +803,12 @@
             const ctx = canvas.getContext('2d');
             const parent = canvas.parentElement;
             
+            // Ensure parent is visible and has dimensions
+            const parentWidth = parent.clientWidth || 400;
+            const parentHeight = parent.clientHeight || 400;
+            
             // Set dimensions
-            const ratio = Math.min(parent.clientWidth / img.width, parent.clientHeight / img.height);
+            const ratio = Math.min(parentWidth / img.width, parentHeight / img.height);
             canvas.width = img.width * ratio;
             canvas.height = img.height * ratio;
             
