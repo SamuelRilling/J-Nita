@@ -69,6 +69,7 @@ def condition_image():
         data = request.json
         image_data = data.get('image')
         config_overrides = data.get('config', {})
+        return_stages = data.get('return_stages', False)
         
         if not image_data:
             return jsonify({"error": "No image data provided"}), 400
@@ -119,14 +120,33 @@ def condition_image():
                 debug_mode=False
             )
 
-            output_image = conditioner.condition_image_array(image_array, filename="upload")
-            _, buffer = cv2.imencode('.png', output_image)
-            output_base64 = base64.b64encode(buffer).decode('utf-8')
+            if return_stages:
+                output_image, stages = conditioner.condition_image_array(image_array, filename="upload", return_stages=True)
+                
+                # Encode main output
+                _, buffer = cv2.imencode('.png', output_image)
+                output_base64 = base64.b64encode(buffer).decode('utf-8')
+                
+                # Encode stages
+                encoded_stages = {}
+                for name, img in stages.items():
+                    _, buf = cv2.imencode('.png', img)
+                    encoded_stages[name] = f"data:image/png;base64,{base64.b64encode(buf).decode('utf-8')}"
+                
+                return jsonify({
+                    "conditioned_image": f"data:image/png;base64,{output_base64}",
+                    "stages": encoded_stages,
+                    "success": True
+                })
+            else:
+                output_image = conditioner.condition_image_array(image_array, filename="upload")
+                _, buffer = cv2.imencode('.png', output_image)
+                output_base64 = base64.b64encode(buffer).decode('utf-8')
 
-            return jsonify({
-                "conditioned_image": f"data:image/png;base64,{output_base64}",
-                "success": True
-            })
+                return jsonify({
+                    "conditioned_image": f"data:image/png;base64,{output_base64}",
+                    "success": True
+                })
     
     except Exception as e:
         logger.error(f"Error conditioning image: {e}", exc_info=True)
