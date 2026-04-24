@@ -131,7 +131,7 @@ def condition_image():
 def process_ocr():
     """
     Process OCR on a conditioned image.
-    Expects: JSON with 'image' (base64), 'model' (optional), 'fallback_models' (optional)
+    Expects: JSON with 'image' (base64), 'model' (optional), 'fallback_models' (optional), 'handwriting_mode' (optional)
     Returns: OCR text results
     """
     try:
@@ -140,6 +140,7 @@ def process_ocr():
         model = data.get('model', 'Nanonets-OCR2-3B')
         fallback_models = data.get('fallback_models', [])
         enable_fallback = data.get('enable_fallback', True)
+        handwriting_mode = data.get('handwriting_mode', False)
         
         if not image_data:
             return jsonify({"error": "No image data provided"}), 400
@@ -155,6 +156,19 @@ def process_ocr():
         try:
             client = get_ocr_client()
             
+            # Load config for handwriting prompt
+            config_path = os.path.join(os.path.dirname(__file__), 'config.json')
+            try:
+                with open(config_path, 'r') as f:
+                    config = json.load(f)
+                handwriting_prompt = config.get("ocr_workflow", {}).get("handwriting_prompt", {}).get("value", "This image contains handwritten text. Please perform OCR and extract all text exactly as written, maintaining the layout where possible. Output in well-formatted Markdown.")
+                if handwriting_mode:
+                    model = config.get("ocr_workflow", {}).get("handwriting_model", {}).get("value", "olmOCR-2-7B-1025")
+            except Exception:
+                handwriting_prompt = "This image contains handwritten text. Please perform OCR and extract all text exactly as written, maintaining the layout where possible. Output in well-formatted Markdown."
+            
+            prompt = handwriting_prompt if handwriting_mode else "Perform OCR on the image."
+            
             # Build list of models to try
             models_to_try = [model]
             if enable_fallback and fallback_models:
@@ -168,17 +182,18 @@ def process_ocr():
             
             for model_name in models_to_try:
                 try:
-                    logger.info(f"Trying OCR model: {model_name}")
+                    logger.info(f"Trying OCR model: {model_name} with mode: {'handwriting' if handwriting_mode else 'standard'}")
                     result = client.predict(
                         model_name,
-                        "Perform OCR on the image.",
+                        prompt,
                         handle_file(tmp_path),
                         2048,
                         0.7,
                         0.9,
                         50,
                         1.1,
-                        api_name="/generate_image"
+                        60,
+                        api_name="/run_ocr"
                     )
                     
                     raw_output = str(result[0]) if isinstance(result, (list, tuple)) and len(result) > 0 else ""
