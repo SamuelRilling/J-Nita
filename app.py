@@ -14,6 +14,7 @@ from PIL import Image
 import numpy as np
 import cv2
 from image_conditioner import ImageConditioner
+from orientation_validator import detect_gibberish
 from gradio_client import Client, handle_file
 import logging
 
@@ -45,6 +46,10 @@ def get_ocr_client():
             raise
     return ocr_client
 
+@app.route('/')
+def index():
+    """Serve the frontend."""
+    return send_file('index.html')
 
 @app.route('/')
 def index():
@@ -206,6 +211,11 @@ def process_ocr():
             model_used = None
             last_error = ""
             
+            # Gibberish detection results
+            is_gibberish = False
+            gibberish_score = 0.0
+            gibberish_reason = ""
+            
             for model_name in models_to_try:
                 try:
                     logger.info(f"Trying OCR model: {model_name} with mode: {'handwriting' if handwriting_mode else 'standard'}")
@@ -225,6 +235,17 @@ def process_ocr():
                     raw_output = str(result[0]) if isinstance(result, (list, tuple)) and len(result) > 0 else ""
                     markdown_output = str(result[1]) if isinstance(result, (list, tuple)) and len(result) > 1 else raw_output
                     model_used = model_name
+                    
+                    # Check for gibberish
+                    if raw_output and detect_gibberish:
+                        is_gibberish, gibberish_score, gibberish_reason = detect_gibberish(raw_output)
+                        if is_gibberish:
+                            logger.warning(f"Gibberish detected with {model_name}: {gibberish_reason}")
+                            # If gibberish is detected and we have more models to try, continue to next model
+                            if enable_fallback and model_name != models_to_try[-1]:
+                                last_error = f"Gibberish detected: {gibberish_reason}"
+                                continue
+                    
                     logger.info(f"Success with model: {model_name}")
                     break
                     
@@ -244,6 +265,9 @@ def process_ocr():
                 "raw_text": raw_output,
                 "markdown_text": markdown_output,
                 "model_used": model_used,
+                "is_gibberish": is_gibberish,
+                "gibberish_score": gibberish_score,
+                "gibberish_reason": gibberish_reason,
                 "success": True
             })
         
