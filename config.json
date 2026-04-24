@@ -127,6 +127,17 @@
       "type": "string",
       "description": "Primary OCR model to use. Available models: 'Nanonets-OCR2-3B' (default, high accuracy), 'Chandra-OCR', 'Dots.OCR', 'olmOCR-2-7B-1025'"
     },
+    "handwriting_model": {
+      "value": "olmOCR-2-7B-1025",
+      "range": ["Nanonets-OCR2-3B", "olmOCR-2-7B-1025"],
+      "type": "string",
+      "description": "OCR model specialized for handwriting or high-capability multimodal model."
+    },
+    "handwriting_prompt": {
+      "value": "This image contains handwritten text. Please perform OCR and extract all text exactly as written, maintaining the layout where possible. Output in well-formatted Markdown.",
+      "type": "string",
+      "description": "Prompt used for handwriting OCR mode"
+    },
     "fallback_models": {
       "value": ["Chandra-OCR", "Dots.OCR", "olmOCR-2-7B-1025"],
       "range": ["Nanonets-OCR2-3B", "Chandra-OCR", "Dots.OCR", "olmOCR-2-7B-1025"],

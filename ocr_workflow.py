@@ -35,7 +35,7 @@ class OCRWorkflow:
     """
     
     def __init__(self, input_folder=None, png_compression=None, strength=None, json_output=None, config_path="config.json", 
-                 quality_mode=None, ocr_models=None, disable_fallback=None):
+                 quality_mode=None, ocr_models=None, disable_fallback=None, handwriting_mode=False):
         """
         Initialize workflow with configurable compression and strength.
         Loads from config.json if available, otherwise uses defaults or provided values.
@@ -49,9 +49,13 @@ class OCRWorkflow:
             quality_mode: Quality preset ('high', 'medium', 'low'). Overrides config if provided.
             ocr_models: List of specific OCR models to use (e.g., ['Nanonets-OCR2-3B']). Overrides config if provided.
             disable_fallback: Disable fallback models (use only primary model). Overrides config if provided.
+            handwriting_mode: Enable specialized handwriting OCR mode.
         """
         # Load config if available
         config = self._load_config(config_path)
+        
+        self.handwriting_mode = handwriting_mode
+        self.handwriting_prompt = config.get("ocr_workflow", {}).get("handwriting_prompt", {}).get("value", "This image contains handwritten text. Please perform OCR and extract all text exactly as written, maintaining the layout where possible. Output in well-formatted Markdown.")
         
         # Use config values or provided values or defaults
         if input_folder is None:
@@ -177,7 +181,10 @@ class OCRWorkflow:
                 self.enable_fallback = ocr_config.get("enable_fallback", {}).get("value", True) if disable_fallback is not True else False
         else:
             # Use config values
-            self.ocr_model = ocr_config.get("ocr_model", {}).get("value", "Nanonets-OCR2-3B")
+            if self.handwriting_mode:
+                self.ocr_model = ocr_config.get("handwriting_model", {}).get("value", "olmOCR-2-7B-1025")
+            else:
+                self.ocr_model = ocr_config.get("ocr_model", {}).get("value", "Nanonets-OCR2-3B")
             self.fallback_models = ocr_config.get("fallback_models", {}).get("value", ["Chandra-OCR", "Dots.OCR", "olmOCR-2-7B-1025"])
             self.enable_fallback = ocr_config.get("enable_fallback", {}).get("value", True) if disable_fallback is not True else False
         
@@ -202,6 +209,8 @@ class OCRWorkflow:
         logger.info(f"OCR output: {self.ocr_output_folder}")
         logger.info(f"Enabled output formats: {', '.join(sorted(self.output_formats))}")
         logger.info(f"OCR model: {self.ocr_model}")
+        if self.handwriting_mode:
+            logger.info("Handwriting mode: ENABLED")
         if self.enable_fallback and self.fallback_models:
             logger.info(f"Fallback models: {', '.join(self.fallback_models)}")
         if "json" in self.output_formats:
@@ -311,7 +320,7 @@ class OCRWorkflow:
         
         return ocr_success
     
-    def _try_ocr_with_model(self, client, img_path: str, model_name: str) -> tuple:
+    def _try_ocr_with_model(self, client, img_path: str, model_name: str, prompt: str = "Perform OCR on the image.") -> tuple:
         """
         Try OCR processing with a specific model.
         
@@ -319,6 +328,7 @@ class OCRWorkflow:
             client: Gradio client instance
             img_path: Path to image file
             model_name: Name of the OCR model to use
+            prompt: Text query/prompt for the model
             
         Returns:
             Tuple of (success: bool, raw_output: str, markdown_output: str, error: str)
@@ -332,14 +342,15 @@ class OCRWorkflow:
             # The API will raise an exception if it times out
             result = client.predict(
                 model_name,                    # model_name
-                "Perform OCR on the image.",   # text_query
+                prompt,                        # text_query
                 handle_file(img_path),        # image
                 2048,                          # max_tokens
                 0.7,                           # temperature
                 0.9,                           # top_p
                 50,                            # top_k
                 1.1,                           # repetition_penalty
-                api_name="/generate_image"
+                60,                            # gpu_timeout_v
+                api_name="/run_ocr"
             )
             
             # Extract results
@@ -425,8 +436,11 @@ class OCRWorkflow:
                 model_used = None
                 last_error = ""
                 
+                # Determine prompt
+                prompt = self.handwriting_prompt if self.handwriting_mode else "Perform OCR on the image."
+                
                 for model_name in models_to_try:
-                    success, raw, md, error = self._try_ocr_with_model(client, img_path, model_name)
+                    success, raw, md, error = self._try_ocr_with_model(client, img_path, model_name, prompt)
                     
                     if success:
                         raw_output = raw
@@ -808,6 +822,8 @@ def main():
                        help='Specific OCR models to use (space-separated). Available: Nanonets-OCR2-3B, Chandra-OCR, Dots.OCR, olmOCR-2-7B-1025. Overrides config.')
     parser.add_argument('--no-fallback', action='store_true',
                        help='Disable fallback models (use only primary model). Overrides config.')
+    parser.add_argument('--handwriting', action='store_true',
+                       help='Enable specialized handwriting OCR mode.')
     
     args = parser.parse_args()
     
@@ -820,7 +836,8 @@ def main():
         config_path=args.config,
         quality_mode=args.quality,
         ocr_models=args.models,
-        disable_fallback=args.no_fallback
+        disable_fallback=args.no_fallback,
+        handwriting_mode=args.handwriting
     )
     
     success = workflow.run_full_pipeline()

@@ -53,18 +53,30 @@
         }
 
         .brand h1 {
-            font-size: 1.875rem;
-            font-weight: 700;
-            letter-spacing: -0.025em;
+            font-size: 2.25rem;
+            font-weight: 800;
+            letter-spacing: -0.05em;
             color: #0f172a;
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.75rem;
+        }
+
+        .brand h1 span {
+            font-size: 0.875rem;
+            background: var(--primary);
+            color: white;
+            padding: 0.2rem 0.6rem;
+            border-radius: 6px;
+            letter-spacing: normal;
+            font-weight: 600;
+            vertical-align: middle;
         }
 
         .brand p {
             color: var(--text-muted);
-            font-size: 0.875rem;
+            font-size: 1rem;
+            font-weight: 400;
         }
 
         .header-actions {
@@ -167,28 +179,36 @@
 
         .card {
             background: var(--card-bg);
-            border-radius: 1rem;
+            border-radius: 1.25rem;
             border: 1px solid var(--border);
             box-shadow: var(--shadow);
             overflow: hidden;
             display: flex;
             flex-direction: column;
             height: 600px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-lg);
         }
 
         .card-header {
-            padding: 1rem 1.25rem;
+            padding: 1.25rem 1.5rem;
             border-bottom: 1px solid var(--border);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: #fcfcfd;
+            background: #ffffff;
         }
 
         .card-title {
-            font-size: 1rem;
-            font-weight: 600;
-            color: #334155;
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         .card-body {
@@ -486,6 +506,60 @@
             text-align: center;
             margin-top: 4rem;
         }
+
+        /* Advanced Mode View */
+        .advanced-container {
+            display: none;
+            margin-top: 2rem;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .advanced-container.active {
+            display: block;
+        }
+
+        .stage-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .stage-card {
+            background: white;
+            border-radius: 0.75rem;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .stage-card h4 {
+            padding: 0.75rem;
+            font-size: 0.875rem;
+            background: #f8fafc;
+            border-bottom: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .stage-img-container {
+            height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f1f5f9;
+            padding: 1rem;
+        }
+
+        .stage-img-container img, .stage-img-container canvas {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
@@ -496,13 +570,6 @@
                 <p>Professional Handwriting-Optimized OCR Studio</p>
             </div>
             <div class="header-actions">
-                <div class="toggle-container">
-                    <span class="toggle-label">Handwriting Mode</span>
-                    <label class="switch">
-                        <input type="checkbox" id="handwritingMode">
-                        <span class="slider"></span>
-                    </label>
-                </div>
                 <div class="status-pill" id="backendStatus">
                     <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#10b981; margin-right:5px;"></span>
                     Backend Online
@@ -536,7 +603,10 @@
             <div class="card">
                 <div class="card-header">
                     <span class="card-title">2. Pre-Processing</span>
-                    <div id="processingBadge" style="display:none; font-size: 0.75rem; background: #e0e7ff; color: #4338ca; padding: 0.125rem 0.5rem; border-radius: 9999px;">Active</div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" id="advancedModeBtn">Advanced Mode</button>
+                        <div id="processingBadge" style="display:none; font-size: 0.75rem; background: #e0e7ff; color: #4338ca; padding: 0.125rem 0.5rem; border-radius: 9999px;">Active</div>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="preview-container" id="conditionedPreview">
@@ -588,6 +658,40 @@
             <button class="btn btn-secondary" id="resetBtn">🔄 Start Over</button>
         </div>
 
+        <!-- Advanced Processing Stages -->
+        <div class="advanced-container" id="advancedContainer">
+            <div class="card" style="height: auto; margin-bottom: 2rem;">
+                <div class="card-header">
+                    <span class="card-title">🔬 Advanced Processing Stages</span>
+                </div>
+                <div class="card-body">
+                    <div class="stage-grid" id="stageGrid">
+                        <div class="stage-card">
+                            <h4>1. Page Detection/Crop</h4>
+                            <div class="stage-img-container">
+                                <div class="empty-state">No data</div>
+                                <img id="stage-crop" style="display:none;">
+                            </div>
+                        </div>
+                        <div class="stage-card">
+                            <h4>2. Resizing</h4>
+                            <div class="stage-img-container">
+                                <div class="empty-state">No data</div>
+                                <img id="stage-resize" style="display:none;">
+                            </div>
+                        </div>
+                        <div class="stage-card">
+                            <h4>3. Adaptive Threshold</h4>
+                            <div class="stage-img-container">
+                                <div class="empty-state">No data</div>
+                                <img id="stage-threshold" style="display:none;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Configuration Card -->
         <div class="card config-card" style="height: auto;">
             <div class="card-header">
@@ -631,9 +735,14 @@
         const conditionBtn = document.getElementById('conditionBtn');
         const ocrBtn = document.getElementById('ocrBtn');
         const resetBtn = document.getElementById('resetBtn');
-        const hwToggle = document.getElementById('handwritingMode');
+        const advancedModeBtn = document.getElementById('advancedModeBtn');
+        const advancedContainer = document.getElementById('advancedContainer');
         const strengthRange = document.getElementById('strengthRange');
         const compressionRange = document.getElementById('compressionRange');
+        const ocrModel = document.getElementById('ocrModel');
+
+        let handwriting_mode = true; // Default to true
+        let advanced_mode = false;
 
         // Initialize marked
         marked.setOptions({
@@ -658,6 +767,15 @@
         ocrBtn.addEventListener('click', processOCR);
         resetBtn.addEventListener('click', resetAll);
 
+        advancedModeBtn.addEventListener('click', () => {
+            advanced_mode = !advanced_mode;
+            advancedContainer.classList.toggle('active', advanced_mode);
+            advancedModeBtn.textContent = advanced_mode ? 'Hide Advanced' : 'Advanced Mode';
+            if (advanced_mode) {
+                advancedContainer.scrollIntoView({ behavior: 'smooth' });
+            }
+        });
+
         strengthRange.addEventListener('input', (e) => {
             document.getElementById('strengthVal').textContent = e.target.value;
         });
@@ -665,17 +783,10 @@
             document.getElementById('compressionVal').textContent = e.target.value;
         });
 
-        hwToggle.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                // Adjust for handwriting
-                strengthRange.value = 35;
-                document.getElementById('strengthVal').textContent = 35;
-                showToast('Handwriting mode active: Parameters optimized', 'success');
-            } else {
-                strengthRange.value = 10;
-                document.getElementById('strengthVal').textContent = 10;
-            }
-        });
+        // Set default values for handwriting
+        strengthRange.value = 35;
+        document.getElementById('strengthVal').textContent = 35;
+        ocrModel.value = 'olmOCR-2-7B-1025';
 
         // Tabs
         document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -704,9 +815,9 @@
                 img.onload = () => {
                     currentImage = e.target.result;
                     originalImgEl = img;
-                    renderCanvas(img, 'originalCanvas');
                     document.getElementById('dropzone').style.display = 'none';
                     document.getElementById('originalPreview').style.display = 'flex';
+                    renderCanvas(img, 'originalCanvas');
                     conditionBtn.disabled = false;
                 };
                 img.src = e.target.result;
@@ -719,8 +830,12 @@
             const ctx = canvas.getContext('2d');
             const parent = canvas.parentElement;
             
+            // Ensure parent is visible and has dimensions
+            const parentWidth = parent.clientWidth || 400;
+            const parentHeight = parent.clientHeight || 400;
+            
             // Set dimensions
-            const ratio = Math.min(parent.clientWidth / img.width, parent.clientHeight / img.height);
+            const ratio = Math.min(parentWidth / img.width, parentHeight / img.height);
             canvas.width = img.width * ratio;
             canvas.height = img.height * ratio;
             
@@ -746,6 +861,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         image: currentImage,
+                        return_stages: true,
                         config: {
                             strength: parseInt(strengthRange.value),
                             png_compression: parseInt(compressionRange.value)
@@ -761,6 +877,12 @@
                         renderCanvas(img, 'conditionedCanvas');
                         document.querySelector('#conditionedPreview .empty-state').style.display = 'none';
                         ocrBtn.disabled = false;
+                        
+                        // Update stages if returned
+                        if (data.stages) {
+                            updateAdvancedStages(data.stages);
+                        }
+                        
                         showToast('Image pre-processed successfully', 'success');
                     };
                     img.src = conditionedImage;
@@ -771,6 +893,28 @@
                 showToast(err.message, 'error');
             } finally {
                 setLoading('condition', false);
+            }
+        }
+
+        function updateAdvancedStages(stages) {
+            const cropImg = document.getElementById('stage-crop');
+            const resizeImg = document.getElementById('stage-resize');
+            const thresholdImg = document.getElementById('stage-threshold');
+            
+            if (stages.crop) {
+                cropImg.src = stages.crop;
+                cropImg.style.display = 'block';
+                cropImg.previousElementSibling.style.display = 'none';
+            }
+            if (stages.resize) {
+                resizeImg.src = stages.resize;
+                resizeImg.style.display = 'block';
+                resizeImg.previousElementSibling.style.display = 'none';
+            }
+            if (stages.threshold) {
+                thresholdImg.src = stages.threshold;
+                thresholdImg.style.display = 'block';
+                thresholdImg.previousElementSibling.style.display = 'none';
             }
         }
 
@@ -786,7 +930,7 @@
                         image: conditionedImage,
                         model: document.getElementById('ocrModel').value,
                         enable_fallback: true,
-                        handwriting_mode: hwToggle.checked
+                        handwriting_mode: handwriting_mode
                     })
                 });
 
@@ -856,6 +1000,17 @@
             document.getElementById('resultActions').style.display = 'none';
             conditionBtn.disabled = true;
             ocrBtn.disabled = true;
+            
+            // Clear stages
+            ['crop', 'resize', 'threshold'].forEach(id => {
+                const img = document.getElementById(`stage-${id}`);
+                img.src = '';
+                img.style.display = 'none';
+                img.previousElementSibling.style.display = 'block';
+            });
+            advanced_mode = false;
+            advancedContainer.classList.remove('active');
+            advancedModeBtn.textContent = 'Advanced Mode';
         }
 
         function copyResult() {

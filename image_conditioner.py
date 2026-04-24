@@ -333,23 +333,84 @@ class ImageConditioner:
         logger.info(f"  Output size: {conditioned.shape[1]}x{conditioned.shape[0]} px")
         logger.info(f"  Saved: {output_filename} (png_compression={save_params[1]})")
 
-    def condition_image_array(self, image: np.ndarray, filename: Optional[str] = None) -> np.ndarray:
+    def condition_image_array(self, image: np.ndarray, filename: Optional[str] = None, return_stages: bool = False) -> any:
         """
         Condition a single in-memory image and return the processed result.
 
         Args:
             image: OpenCV BGR image (numpy array)
             filename: Optional filename for debug output labeling
+            return_stages: If True, returns (final_image, stages_dict)
 
         Returns:
-            Conditioned image (binary/enhanced)
+            Conditioned image (binary/enhanced) OR (final_image, stages_dict)
         """
         self.current_filename = filename or self.current_filename
         upright = self._ensure_upright(image)
         if upright is not image:
             logger.info("  Image was rotated upright before processing")
+        
+        if return_stages:
+            return self._condition_image_with_stages(upright, filename)
+        
         return self._condition_image(upright, filename)
     
+    def _condition_image_with_stages(self, image: np.ndarray, filename: Optional[str] = None) -> Tuple[np.ndarray, dict]:
+        """Same as _condition_image but returns intermediate stages."""
+        stages = {}
+        debug_filename = filename if filename is not None else self.current_filename
+        
+        # Step 1: Detect page boundaries and crop
+        cropped = self._detect_and_crop_page(image, debug_filename)
+        if cropped is None:
+            logger.warning("  Page detection failed, using full image")
+            cropped = image
+        stages['crop'] = cropped
+        
+        # Step 2: Resize to optimal dimensions
+        resized = self._resize_image(cropped)
+        stages['resize'] = resized
+        
+        if self.strength <= 0:
+            stages['threshold'] = resized
+            return resized, stages
+
+        # Step 3: Adaptive thresholding
+        gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
+        if self.denoise_ksize and self.strength > 0:
+            gray = cv2.medianBlur(gray, self.denoise_ksize)
+
+        c_eff = self.ADAPTIVE_C
+        if self.strength <= 10:
+            c_eff = max(1, int(self.ADAPTIVE_C * 4))
+
+        binary = cv2.adaptiveThreshold(
+            gray,
+            255,
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv2.THRESH_BINARY,
+            blockSize=self.ADAPTIVE_BLOCK_SIZE,
+            C=c_eff
+        )
+        stages['threshold'] = binary
+        
+        # Step 4: Morphological operations
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, self.MORPH_KERNEL_SIZE)
+        binary = cv2.erode(binary, kernel, iterations=self.MORPH_ITERATIONS)
+        binary = cv2.dilate(binary, kernel, iterations=self.MORPH_ITERATIONS)
+        close_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+        binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, close_kernel, iterations=max(1, self.MORPH_ITERATIONS))
+        
+        # Step 5: Blend
+        if self.strength >= 100:
+            final = binary
+        else:
+            alpha = self.strength / 100.0
+            blended = (alpha * binary.astype('float32') + (1.0 - alpha) * gray.astype('float32'))
+            final = np.clip(blended, 0, 255).astype('uint8')
+        
+        return final, stages
+
     def _condition_image(self, image: np.ndarray, filename: Optional[str] = None) -> np.ndarray:
         """
         Apply full conditioning pipeline to an image.
