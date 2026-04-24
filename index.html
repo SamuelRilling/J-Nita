@@ -785,7 +785,8 @@
                     body: JSON.stringify({
                         image: conditionedImage,
                         model: document.getElementById('ocrModel').value,
-                        enable_fallback: true
+                        enable_fallback: true,
+                        handwriting_mode: hwToggle.checked
                     })
                 });
 
