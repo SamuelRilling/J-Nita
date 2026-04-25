@@ -16,6 +16,8 @@ import cv2
 from image_conditioner import ImageConditioner
 from orientation_validator import detect_gibberish
 from gradio_client import Client, handle_file
+from fpdf import FPDF
+from docx import Document
 import logging
 
 app = Flask(__name__)
@@ -45,11 +47,6 @@ def get_ocr_client():
             logger.error(f"Failed to initialize OCR client: {e}")
             raise
     return ocr_client
-
-@app.route('/')
-def index():
-    """Serve the frontend."""
-    return send_file('index.html')
 
 @app.route('/')
 def index():
@@ -303,6 +300,72 @@ def save_config():
             json.dump(config, f, indent=2)
         return jsonify({"success": True})
     except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/export/pdf', methods=['POST'])
+def export_pdf():
+    """Export markdown text as PDF."""
+    try:
+        data = request.json
+        markdown_text = data.get('markdown_text', '')
+        filename = data.get('filename', 'ocr_result.pdf')
+        
+        if not markdown_text:
+            return jsonify({"error": "No text provided"}), 400
+            
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        
+        # Simple markdown to plain text conversion for now
+        # or just write the markdown as is.
+        # FPDF doesn't support full markdown, so we just write multi_cell.
+        # We replace some common markdown symbols for better readability if needed.
+        
+        pdf.multi_cell(0, 10, markdown_text)
+        
+        pdf_output = io.BytesIO()
+        pdf_output.write(pdf.output())
+        pdf_output.seek(0)
+        
+        return send_file(
+            pdf_output,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=filename
+        )
+    except Exception as e:
+        logger.error(f"Error exporting PDF: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/export/docx', methods=['POST'])
+def export_docx():
+    """Export markdown text as DOCX."""
+    try:
+        data = request.json
+        markdown_text = data.get('markdown_text', '')
+        filename = data.get('filename', 'ocr_result.docx')
+        
+        if not markdown_text:
+            return jsonify({"error": "No text provided"}), 400
+            
+        doc = Document()
+        doc.add_paragraph(markdown_text)
+        
+        docx_output = io.BytesIO()
+        doc.save(docx_output)
+        docx_output.seek(0)
+        
+        return send_file(
+            docx_output,
+            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            as_attachment=True,
+            download_name=filename
+        )
+    except Exception as e:
+        logger.error(f"Error exporting DOCX: {e}")
         return jsonify({"error": str(e)}), 500
 
 
