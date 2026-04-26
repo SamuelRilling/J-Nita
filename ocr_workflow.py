@@ -72,7 +72,7 @@ class OCRWorkflow:
         output_formats = config.get("ocr_workflow", {}).get("output_formats", {}).get("value", ["txt"])
         
         # Validate output formats
-        valid_formats = {"txt", "markdown", "docx", "json"}
+        valid_formats = {"txt", "markdown", "docx", "json", "pdf"}
         if not isinstance(output_formats, list):
             output_formats = ["txt"]
         output_formats = [f.lower() for f in output_formats if f.lower() in valid_formats]
@@ -495,6 +495,14 @@ class OCRWorkflow:
                     saved_files["docx"] = docx_file
                     logger.info(f"  ✓ Saved DOCX: {os.path.basename(docx_file)}")
                 
+                # Generate PDF format
+                if "pdf" in self.output_formats:
+                    pdf_file = os.path.join(self.ocr_output_folder, f"{base_name}.pdf")
+                    pdf_content = markdown_output if markdown_output and markdown_output != raw_output else raw_output
+                    self._save_as_pdf(pdf_content, pdf_file)
+                    saved_files["pdf"] = pdf_file
+                    logger.info(f"  ✓ Saved PDF: {os.path.basename(pdf_file)}")
+                
                 # Detect gibberish in the result
                 is_gibberish = False
                 gibberish_score = 0.0
@@ -695,6 +703,9 @@ class OCRWorkflow:
         doc = Document()
         
         # Basic markdown parsing for better formatting
+        if not text.strip():
+            return doc.save(filepath)
+            
         lines = text.split('\n')
         for line in lines:
             line_stripped = line.strip()
@@ -719,12 +730,12 @@ class OCRWorkflow:
                 doc.add_heading(line_stripped[5:], level=4)
             elif line_stripped.startswith('- ') or (line_stripped.startswith('* ') and not line_stripped.startswith('**')):
                 # Bullet list item (but not bold markers)
-                p = doc.add_paragraph(line_stripped[2:], style='List Bullet')
+                p = doc.add_paragraph(style='List Bullet')
                 self._add_formatted_text(p, line_stripped[2:], Pt)
             elif line_stripped[0].isdigit() and '. ' in line_stripped[:5]:
                 # Numbered list item
                 list_text = re.sub(r'^\d+\.\s+', '', line_stripped)
-                p = doc.add_paragraph(list_text, style='List Number')
+                p = doc.add_paragraph(style='List Number')
                 self._add_formatted_text(p, list_text, Pt)
             else:
                 # Regular paragraph with basic markdown formatting
@@ -733,6 +744,61 @@ class OCRWorkflow:
                 self._add_formatted_text(p, line_stripped, Pt)
         
         doc.save(filepath)
+    
+    def _save_as_pdf(self, text: str, filepath: str):
+        """
+        Save text as a PDF file using fpdf2 library.
+        Basic support for markdown formatting.
+        """
+        try:
+            from fpdf import FPDF
+        except ImportError as e:
+            logger.error(f"fpdf2 not installed: {e}. Install with: pip install fpdf2")
+            raise ImportError("fpdf2 is required for PDF output format. Install with: pip install fpdf2")
+        
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_auto_page_break(auto=True, margin=15)
+        
+        if not text.strip():
+            pdf.output(filepath)
+            return
+
+        # Basic markdown parsing
+        lines = text.split('\n')
+        for line in lines:
+            line_stripped = line.strip()
+            
+            if not line_stripped:
+                pdf.ln(5)
+                continue
+            
+            if line_stripped.startswith('# '):
+                pdf.set_font("helvetica", "B", 18)
+                pdf.multi_cell(0, 10, line_stripped[2:])
+                pdf.ln(2)
+            elif line_stripped.startswith('## '):
+                pdf.set_font("helvetica", "B", 16)
+                pdf.multi_cell(0, 10, line_stripped[3:])
+                pdf.ln(1)
+            elif line_stripped.startswith('### '):
+                pdf.set_font("helvetica", "B", 14)
+                pdf.multi_cell(0, 10, line_stripped[4:])
+            elif line_stripped.startswith('- ') or (line_stripped.startswith('* ') and not line_stripped.startswith('**')):
+                pdf.set_font("helvetica", "", 12)
+                # Bullet point
+                pdf.cell(5) # Indent
+                pdf.cell(5, 10, chr(149)) # Bullet character
+                pdf.multi_cell(0, 10, line_stripped[2:])
+            else:
+                # Regular paragraph
+                pdf.set_font("helvetica", "", 12)
+                # For regular paragraphs, we'll do very basic bold/italic detection 
+                # (multi_cell doesn't support mixed styles easily without HTML or specialized methods)
+                # For simplicity in this initial version, we'll just write the line
+                pdf.multi_cell(0, 10, line_stripped)
+        
+        pdf.output(filepath)
     
     def _add_formatted_text(self, paragraph, text: str, Pt_class):
         """
