@@ -151,29 +151,15 @@
         /* Layout Grid */
         .main-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-columns: 1fr 1fr;
             gap: 1.5rem;
             margin-bottom: 2rem;
+            align-items: start;
         }
 
-        @media (max-width: 1280px) {
-            .main-grid {
-                grid-template-columns: 1fr 1fr;
-            }
-            .results-panel {
-                grid-column: span 2;
-            }
-        }
-
-        @media (max-width: 768px) {
+        @media (max-width: 1024px) {
             .main-grid {
                 grid-template-columns: 1fr;
-            }
-            .results-panel {
-                grid-column: span 1;
-            }
-            .app-container {
-                padding: 1rem;
             }
         }
 
@@ -185,7 +171,7 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            height: 600px;
+            height: 700px; /* Increased height for better view */
             transition: transform 0.2s, box-shadow 0.2s;
         }
 
@@ -578,45 +564,45 @@
         </header>
 
         <div class="main-grid">
-            <!-- Original Image -->
+            <!-- Image Workspace -->
             <div class="card">
                 <div class="card-header">
-                    <span class="card-title">1. Input Image</span>
-                    <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" id="clearImgBtn">Clear</button>
-                </div>
-                <div class="card-body">
-                    <div class="upload-dropzone" id="dropzone">
-                        <div class="upload-icon">📥</div>
-                        <div>
-                            <strong>Click to upload</strong> or drag and drop
-                            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">PNG, JPG, WEBP, BMP</p>
-                        </div>
-                        <input type="file" id="fileInput" hidden accept="image/*">
-                    </div>
-                    <div class="preview-container" id="originalPreview" style="display: none;">
-                        <canvas id="originalCanvas"></canvas>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Conditioned Image -->
-            <div class="card">
-                <div class="card-header">
-                    <span class="card-title">2. Pre-Processing</span>
+                    <span class="card-title">🖼️ Image Workspace</span>
                     <div style="display: flex; gap: 0.5rem; align-items: center;">
                         <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" id="advancedModeBtn">Advanced Mode</button>
-                        <div id="processingBadge" style="display:none; font-size: 0.75rem; background: #e0e7ff; color: #4338ca; padding: 0.125rem 0.5rem; border-radius: 9999px;">Active</div>
+                        <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" id="clearImgBtn">Clear</button>
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="preview-container" id="conditionedPreview">
-                        <div class="empty-state">Will appear after conditioning</div>
-                        <canvas id="conditionedCanvas" style="display: none;"></canvas>
+                    <div class="tabs">
+                        <button class="tab-btn active" data-img-tab="original">1. Input Image</button>
+                        <button class="tab-btn" data-img-tab="conditioned">2. Pre-Processed</button>
                     </div>
-                    <div class="overlay" id="conditionOverlay">
-                        <div class="spinner"></div>
-                        <div class="progress-steps" id="conditionSteps">
-                            <!-- Steps added dynamically -->
+
+                    <div id="originalImgTab" class="tab-content">
+                        <div class="upload-dropzone" id="dropzone">
+                            <div class="upload-icon">📥</div>
+                            <div>
+                                <strong>Click to upload</strong> or drag and drop
+                                <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">PNG, JPG, WEBP, BMP</p>
+                            </div>
+                            <input type="file" id="fileInput" hidden accept="image/*">
+                        </div>
+                        <div class="preview-container" id="originalPreview" style="display: none;">
+                            <canvas id="originalCanvas"></canvas>
+                        </div>
+                    </div>
+
+                    <div id="conditionedImgTab" class="tab-content" style="display: none; height: 100%; position: relative;">
+                        <div class="preview-container" id="conditionedPreview">
+                            <div class="empty-state" style="margin-top: 2rem;">Will appear after conditioning</div>
+                            <canvas id="conditionedCanvas" style="display: none;"></canvas>
+                        </div>
+                        <div class="overlay" id="conditionOverlay">
+                            <div class="spinner"></div>
+                            <div class="progress-steps" id="conditionSteps">
+                                <!-- Steps added dynamically -->
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -625,7 +611,7 @@
             <!-- OCR Results -->
             <div class="card results-panel">
                 <div class="card-header">
-                    <span class="card-title">3. OCR Results</span>
+                    <span class="card-title">📝 OCR Results</span>
                     <div class="header-actions" id="resultActions" style="display:none;">
                         <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="copyResult()">Copy</button>
                         <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="downloadResult()">Save</button>
@@ -638,7 +624,7 @@
                     </div>
                     <div id="previewTab" class="tab-content">
                         <div id="markdownPreview" class="markdown-body">
-                            <div class="empty-state">OCR results will appear here</div>
+                            <div class="empty-state" style="margin-top: 2rem;">OCR results will appear here</div>
                         </div>
                     </div>
                     <div id="rawTab" class="tab-content" style="display: none;">
@@ -791,17 +777,36 @@
         // Tabs
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                const parent = btn.parentElement;
+                parent.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                if (btn.dataset.tab === 'preview') {
-                    document.getElementById('previewTab').style.display = 'block';
-                    document.getElementById('rawTab').style.display = 'none';
-                } else {
-                    document.getElementById('previewTab').style.display = 'none';
-                    document.getElementById('rawTab').style.display = 'block';
+
+                if (btn.dataset.tab) {
+                    // OCR Results Tabs
+                    if (btn.dataset.tab === 'preview') {
+                        document.getElementById('previewTab').style.display = 'block';
+                        document.getElementById('rawTab').style.display = 'none';
+                    } else {
+                        document.getElementById('previewTab').style.display = 'none';
+                        document.getElementById('rawTab').style.display = 'block';
+                    }
+                } else if (btn.dataset.imgTab) {
+                    // Image Workspace Tabs
+                    if (btn.dataset.imgTab === 'original') {
+                        document.getElementById('originalImgTab').style.display = 'block';
+                        document.getElementById('conditionedImgTab').style.display = 'none';
+                    } else {
+                        document.getElementById('originalImgTab').style.display = 'none';
+                        document.getElementById('conditionedImgTab').style.display = 'block';
+                    }
                 }
             });
         });
+
+        function switchImageTab(tabName) {
+            const btn = document.querySelector(`.tab-btn[data-img-tab="${tabName}"]`);
+            if (btn) btn.click();
+        }
 
         function handleFile(file) {
             if (!file.type.startsWith('image/')) {
@@ -819,6 +824,7 @@
                     document.getElementById('originalPreview').style.display = 'flex';
                     renderCanvas(img, 'originalCanvas');
                     conditionBtn.disabled = false;
+                    switchImageTab('original');
                 };
                 img.src = e.target.result;
             };
@@ -828,13 +834,18 @@
         function renderCanvas(img, canvasId) {
             const canvas = document.getElementById(canvasId);
             const ctx = canvas.getContext('2d');
+            
+            // Ensure container is visible before measuring
+            const tab = canvas.closest('.tab-content');
+            const wasHidden = tab.style.display === 'none';
+            if (wasHidden) tab.style.display = 'block';
+            
             const parent = canvas.parentElement;
+            const parentWidth = parent.clientWidth || 600;
+            const parentHeight = parent.clientHeight || 500;
             
-            // Ensure parent is visible and has dimensions
-            const parentWidth = parent.clientWidth || 400;
-            const parentHeight = parent.clientHeight || 400;
+            if (wasHidden) tab.style.display = 'none';
             
-            // Set dimensions
             const ratio = Math.min(parentWidth / img.width, parentHeight / img.height);
             canvas.width = img.width * ratio;
             canvas.height = img.height * ratio;
@@ -846,6 +857,7 @@
         async function processConditioning() {
             if (!currentImage) return;
 
+            switchImageTab('conditioned');
             setLoading('condition', true);
             const steps = [
                 'Validating image...',
@@ -1000,6 +1012,7 @@
             document.getElementById('resultActions').style.display = 'none';
             conditionBtn.disabled = true;
             ocrBtn.disabled = true;
+            switchImageTab('original');
             
             // Clear stages
             ['crop', 'resize', 'threshold'].forEach(id => {

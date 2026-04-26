@@ -53,7 +53,6 @@ def index():
     """Serve the frontend."""
     return send_file('index.html')
 
-
 @app.route('/api/health', methods=['GET'])
 def health():
     """Health check endpoint."""
@@ -370,4 +369,6 @@ def export_docx():
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5001)
+    import os
+    port = int(os.environ.get('PORT', 5001))
+    app.run(debug=True, host='0.0.0.0', port=port)
