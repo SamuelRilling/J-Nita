@@ -546,6 +546,20 @@
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        .loading-spinner {
+            border: 2px solid rgba(0,0,0,0.1);
+            border-top: 2px solid var(--primary);
+            border-radius: 50%;
+            width: 12px;
+            height: 12px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -612,9 +626,11 @@
             <div class="card results-panel">
                 <div class="card-header">
                     <span class="card-title">📝 OCR Results</span>
-                    <div class="header-actions" id="resultActions" style="display:none;">
-                        <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="copyResult()">Copy</button>
-                        <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="downloadResult()">Save</button>
+                    <div class="header-actions" id="resultActions" style="display:none; gap: 0.5rem;">
+                        <button class="btn btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.8rem;" onclick="copyResult()">📋 Copy</button>
+                        <button class="btn btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.8rem;" onclick="downloadResult('md')">📄 MD</button>
+                        <button class="btn btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.8rem;" onclick="downloadResult('pdf')">📕 PDF</button>
+                        <button class="btn btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.8rem;" onclick="downloadResult('docx')">📘 DOCX</button>
                     </div>
                 </div>
                 <div class="card-body">
@@ -1032,14 +1048,51 @@
             showToast('Copied to clipboard', 'success');
         }
 
-        function downloadResult() {
+        async function downloadResult(format = 'md') {
+            const btn = event ? event.currentTarget : null;
+            const originalText = btn ? btn.innerHTML : '';
             const text = document.getElementById('rawText').textContent;
-            const blob = new Blob([text], { type: 'text/markdown' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'ocr_result.md';
-            a.click();
+
+            if (format === 'md') {
+                const blob = new Blob([text], { type: 'text/markdown' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'ocr_result.md';
+                a.click();
+            } else {
+                try {
+                    if (btn) {
+                        btn.disabled = true;
+                        btn.innerHTML = `<span class="loading-spinner" style="width: 12px; height: 12px; border-width: 2px; display: inline-block; vertical-align: middle;"></span>`;
+                    }
+                    
+                    const response = await fetch(`${API_BASE}/api/export/${format}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ markdown_text: text })
+                    });
+                    
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `ocr_result.${format}`;
+                        a.click();
+                    } else {
+                        const errData = await response.json().catch(() => ({}));
+                        showToast(`Failed to export ${format}: ${errData.error || 'Unknown error'}`, 'error');
+                    }
+                } catch (err) {
+                    showToast(err.message, 'error');
+                } finally {
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = originalText;
+                    }
+                }
+            }
         }
     </script>
 </body>
