@@ -745,6 +745,7 @@
 
         let handwriting_mode = true; // Default to true
         let advanced_mode = false;
+        let stepsIntervalId = null;
 
         // Initialize marked
         marked.setOptions({
@@ -873,6 +874,7 @@
         async function processConditioning() {
             if (!currentImage) return;
 
+            conditionBtn.disabled = true;
             switchImageTab('conditioned');
             setLoading('condition', true);
             const steps = [
@@ -883,10 +885,14 @@
             ];
             updateSteps('conditionSteps', steps);
 
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 90000);
+
             try {
                 const response = await fetch(`${API_BASE}/api/condition`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    signal: controller.signal,
                     body: JSON.stringify({
                         image: currentImage,
                         return_stages: true,
@@ -905,12 +911,11 @@
                         renderCanvas(img, 'conditionedCanvas');
                         document.querySelector('#conditionedPreview .empty-state').style.display = 'none';
                         ocrBtn.disabled = false;
-                        
-                        // Update stages if returned
+
                         if (data.stages) {
                             updateAdvancedStages(data.stages);
                         }
-                        
+
                         showToast('Image pre-processed successfully', 'success');
                     };
                     img.src = conditionedImage;
@@ -918,9 +923,15 @@
                     throw new Error(data.error || 'Conditioning failed');
                 }
             } catch (err) {
-                showToast(err.message, 'error');
+                if (err.name === 'AbortError') {
+                    showToast('Request timed out – try a smaller image', 'error');
+                } else {
+                    showToast(err.message, 'error');
+                }
             } finally {
+                clearTimeout(timeoutId);
                 setLoading('condition', false);
+                conditionBtn.disabled = false;
             }
         }
 
@@ -949,11 +960,17 @@
         async function processOCR() {
             if (!conditionedImage) return;
 
+            ocrBtn.disabled = true;
             setLoading('ocr', true);
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 180000);
+
             try {
                 const response = await fetch(`${API_BASE}/api/ocr`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    signal: controller.signal,
                     body: JSON.stringify({
                         image: conditionedImage,
                         model: document.getElementById('ocrModel').value,
@@ -973,9 +990,15 @@
                     throw new Error(data.error || 'OCR failed');
                 }
             } catch (err) {
-                showToast(err.message, 'error');
+                if (err.name === 'AbortError') {
+                    showToast('OCR timed out – try a different model', 'error');
+                } else {
+                    showToast(err.message, 'error');
+                }
             } finally {
+                clearTimeout(timeoutId);
                 setLoading('ocr', false);
+                ocrBtn.disabled = false;
             }
         }
 
@@ -986,6 +1009,10 @@
         }
 
         function updateSteps(containerId, steps) {
+            if (stepsIntervalId) {
+                clearInterval(stepsIntervalId);
+                stepsIntervalId = null;
+            }
             const container = document.getElementById(containerId);
             container.innerHTML = steps.map((s, i) => `
                 <div class="step" id="step-${i}">
@@ -993,16 +1020,16 @@
                     <span>${s}</span>
                 </div>
             `).join('');
-            
-            // Simulate step progress
+
             let currentStep = 0;
-            const interval = setInterval(() => {
+            stepsIntervalId = setInterval(() => {
                 if (currentStep > 0) document.getElementById(`step-${currentStep-1}`).className = 'step done';
                 if (currentStep < steps.length) {
                     document.getElementById(`step-${currentStep}`).className = 'step active';
                     currentStep++;
                 } else {
-                    clearInterval(interval);
+                    clearInterval(stepsIntervalId);
+                    stepsIntervalId = null;
                 }
             }, 600);
         }

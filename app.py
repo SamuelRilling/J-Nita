@@ -124,17 +124,25 @@ def condition_image():
 
             if return_stages:
                 output_image, stages = conditioner.condition_image_array(image_array, filename="upload", return_stages=True)
-                
-                # Encode main output
-                _, buffer = cv2.imencode('.png', output_image)
+
+                # Cap output dimensions and apply compression to keep response manageable
+                h, w = output_image.shape[:2]
+                if max(h, w) > 2000:
+                    scale = 2000 / max(h, w)
+                    output_image = cv2.resize(output_image, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+                _, buffer = cv2.imencode('.png', output_image, [cv2.IMWRITE_PNG_COMPRESSION, 6])
                 output_base64 = base64.b64encode(buffer).decode('utf-8')
-                
-                # Encode stages
+
+                # Encode stages at preview resolution using JPEG to minimize response size
                 encoded_stages = {}
                 for name, img in stages.items():
-                    _, buf = cv2.imencode('.png', img)
-                    encoded_stages[name] = f"data:image/png;base64,{base64.b64encode(buf).decode('utf-8')}"
-                
+                    sh, sw = img.shape[:2]
+                    if max(sh, sw) > 800:
+                        scale = 800 / max(sh, sw)
+                        img = cv2.resize(img, (int(sw * scale), int(sh * scale)), interpolation=cv2.INTER_AREA)
+                    _, buf = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 75])
+                    encoded_stages[name] = f"data:image/jpeg;base64,{base64.b64encode(buf).decode('utf-8')}"
+
                 return jsonify({
                     "conditioned_image": f"data:image/png;base64,{output_base64}",
                     "stages": encoded_stages,
@@ -142,7 +150,13 @@ def condition_image():
                 })
             else:
                 output_image = conditioner.condition_image_array(image_array, filename="upload")
-                _, buffer = cv2.imencode('.png', output_image)
+
+                # Cap output dimensions and apply compression
+                h, w = output_image.shape[:2]
+                if max(h, w) > 2000:
+                    scale = 2000 / max(h, w)
+                    output_image = cv2.resize(output_image, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+                _, buffer = cv2.imencode('.png', output_image, [cv2.IMWRITE_PNG_COMPRESSION, 6])
                 output_base64 = base64.b64encode(buffer).decode('utf-8')
 
                 return jsonify({
