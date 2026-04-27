@@ -3,46 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>J-Nita v5.0 - Web-Based OCR Pipeline</title>
+    <title>J-Nita v6.0 - Professional OCR Studio</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.2.0/github-markdown.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
-            /* Foundation: paper + ink, warm-tinted neutrals */
-            --paper:        oklch(98%   0.005 85);
-            --paper-warm:   oklch(96.5% 0.010 80);
-            --surface:      oklch(99%   0.003 85);
-            --ink:          oklch(22%   0.020 270);
-            --ink-soft:     oklch(38%   0.015 270);
-            --muted:        oklch(55%   0.015 270);
-            --hairline:     oklch(89%   0.012 80);
-            --hairline-soft:oklch(93%   0.008 80);
-
-            /* Pipeline stages — Full palette, three named roles */
-            --stage-input:       oklch(58%   0.130 215);   /* clear cyan-blue: intake */
-            --stage-input-tint:  oklch(96.5% 0.022 215);
-            --stage-input-edge:  oklch(80%   0.060 215);
-
-            --stage-process:     oklch(64%   0.150 65);    /* warm amber: working */
-            --stage-process-tint:oklch(96.5% 0.035 75);
-            --stage-process-edge:oklch(82%   0.080 70);
-
-            --stage-result:      oklch(52%   0.135 150);   /* forest green: complete */
-            --stage-result-tint: oklch(96.5% 0.025 150);
-            --stage-result-edge: oklch(80%   0.060 150);
-
-            /* Signal — vermilion accent reserved for brand mark, focus, errors */
-            --signal:       oklch(60%   0.190 28);
-            --signal-tint:  oklch(96%   0.040 28);
-
-            /* Status (semantic) */
-            --success:      var(--stage-result);
-            --success-tint: var(--stage-result-tint);
-            --warning:      oklch(70%   0.160 75);
-            --warning-tint: oklch(96%   0.045 75);
-            --error:        var(--signal);
-            --error-tint:   var(--signal-tint);
-
-            --shadow-card:  0 1px 2px oklch(22% 0.02 270 / 0.04), 0 8px 24px oklch(22% 0.02 270 / 0.06);
-            --shadow-lift:  0 6px 20px oklch(22% 0.02 270 / 0.10);
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --error: #ef4444;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
         }
 
         * {
@@ -52,397 +30,314 @@
         }
 
         body {
-            font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: var(--paper);
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            line-height: 1.5;
             min-height: 100vh;
-            padding: 24px;
-            color: var(--ink);
         }
 
-        .container {
-            max-width: 1400px;
+        .app-container {
+            max-width: 1600px;
             margin: 0 auto;
-            background: var(--surface);
-            border-radius: 20px;
-            box-shadow: var(--shadow-card);
-            overflow: hidden;
-            border: 1px solid var(--hairline);
+            padding: 2rem;
         }
 
-        .header {
-            background: var(--ink);
-            color: var(--paper);
-            padding: 34px 40px;
+        header {
             display: flex;
-            align-items: center;
             justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
             flex-wrap: wrap;
-            gap: 16px;
-            position: relative;
+            gap: 1rem;
         }
 
-        .header::after {
-            content: "";
-            position: absolute;
-            left: 0; right: 0; bottom: 0;
-            height: 3px;
-            background: linear-gradient(90deg,
-                var(--stage-input) 0%, var(--stage-input) 33.33%,
-                var(--stage-process) 33.33%, var(--stage-process) 66.66%,
-                var(--stage-result) 66.66%, var(--stage-result) 100%);
-        }
-
-        .header h1 {
-            font-size: 2.1em;
-            margin-bottom: 6px;
-            letter-spacing: -0.02em;
-        }
-
-        .header h1 .mark {
-            color: var(--signal);
-        }
-
-        .header p {
-            opacity: 0.78;
-            font-size: 1.05em;
-            max-width: 640px;
-        }
-
-        .header-meta {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            align-items: flex-end;
-        }
-
-        .status-pill {
-            background: oklch(100% 0 0 / 0.08);
-            color: oklch(95% 0.005 85);
-            border: 1px solid oklch(100% 0 0 / 0.16);
-            padding: 6px 14px;
-            border-radius: 999px;
-            font-size: 0.85em;
-            letter-spacing: 0.01em;
-        }
-
-        .panel-actions .status-pill {
-            background: var(--paper-warm);
-            color: var(--ink-soft);
-            border: 1px solid var(--hairline);
-        }
-
-        .image-panel.stage-input .panel-actions .status-pill {
-            background: var(--stage-input-tint);
-            color: var(--stage-input);
-            border-color: var(--stage-input-edge);
-        }
-
-        .image-panel.stage-process .panel-actions .status-pill {
-            background: var(--stage-process-tint);
-            color: oklch(45% 0.10 70);
-            border-color: var(--stage-process-edge);
-        }
-
-        .image-panel.stage-result .panel-actions .status-pill {
-            background: var(--stage-result-tint);
-            color: var(--stage-result);
-            border-color: var(--stage-result-edge);
-        }
-
-        .content {
-            padding: 32px 40px 40px;
-        }
-
-        /* Image Processing Section */
-        .processing-section {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .image-panel {
-            border: 1px solid var(--hairline);
-            border-radius: 14px;
-            padding: 16px 16px 18px;
-            background: var(--paper-warm);
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            position: relative;
-        }
-
-        .image-panel.stage-input    { background: var(--stage-input-tint);    border-color: var(--stage-input-edge); }
-        .image-panel.stage-process  { background: var(--stage-process-tint);  border-color: var(--stage-process-edge); }
-        .image-panel.stage-result   { background: var(--stage-result-tint);   border-color: var(--stage-result-edge); }
-
-        .image-panel h3 {
-            margin-bottom: 0;
-            color: var(--ink);
-            text-align: left;
-            font-size: 1.05em;
-            font-weight: 700;
+        .brand h1 {
+            font-size: 2.25rem;
+            font-weight: 800;
+            letter-spacing: -0.05em;
+            color: #0f172a;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 0.75rem;
         }
 
-        .image-panel h3::before {
-            content: "";
+        .brand h1 span {
+            font-size: 0.875rem;
+            background: var(--primary);
+            color: white;
+            padding: 0.2rem 0.6rem;
+            border-radius: 6px;
+            letter-spacing: normal;
+            font-weight: 600;
+            vertical-align: middle;
+        }
+
+        .brand p {
+            color: var(--text-muted);
+            font-size: 1rem;
+            font-weight: 400;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        /* Handwriting Toggle */
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            background: white;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .toggle-label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .switch {
+            position: relative;
             display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 999px;
-            background: var(--muted);
-            box-shadow: 0 0 0 3px oklch(100% 0 0 / 0.6);
+            width: 44px;
+            height: 24px;
         }
 
-        .image-panel.stage-input   h3::before { background: var(--stage-input); }
-        .image-panel.stage-process h3::before { background: var(--stage-process); }
-        .image-panel.stage-result  h3::before { background: var(--stage-result); }
-
-        .panel-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
         }
 
-        .panel-actions {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .canvas-container {
-            width: 100%;
-            height: 400px;
-            border: 1px dashed var(--hairline);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: var(--surface);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .canvas-container canvas {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-        }
-
-        .canvas-container .placeholder {
-            color: var(--muted);
-            text-align: center;
-            padding: 20px;
-            font-size: 0.95em;
-        }
-
-        .progress-overlay {
+        .slider {
             position: absolute;
-            inset: 0;
-            background: oklch(99% 0.005 85 / 0.94);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 18px;
-            text-align: left;
-            color: var(--ink);
-            backdrop-filter: blur(6px);
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #cbd5e1;
+            transition: .4s;
+            border-radius: 34px;
         }
 
-        .progress-overlay.active {
-            display: flex;
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
         }
 
-        .progress-log {
-            width: 100%;
-            max-height: 320px;
-            overflow-y: auto;
-            font-size: 0.9em;
+        input:checked + .slider {
+            background-color: var(--primary);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+
+        /* Layout Grid */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            align-items: start;
+        }
+
+        @media (max-width: 1024px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 1.25rem;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            overflow: hidden;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            height: 700px; /* Increased height for better view */
+            transition: transform 0.2s, box-shadow 0.2s;
         }
 
-        .progress-line {
+        .card:hover {
+            box-shadow: var(--shadow-lg);
+        }
+
+        .card-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #ffffff;
+        }
+
+        .card-title {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: #1e293b;
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 8px 10px;
-            border-radius: 8px;
-            background: var(--surface);
-            border: 1px solid var(--hairline);
-            box-shadow: var(--shadow-card);
+            gap: 0.5rem;
         }
 
-        .progress-line.complete {
-            border-color: var(--stage-result-edge);
-            background: var(--success-tint);
-            color: oklch(35% 0.10 150);
-        }
-
-        .progress-line.error {
-            border-color: oklch(82% 0.08 28);
-            background: var(--error-tint);
-            color: oklch(40% 0.16 28);
-        }
-
-        .progress-icon {
-            font-size: 0.95em;
-        }
-
-        .progress-message {
+        .card-body {
+            padding: 1.25rem;
             flex: 1;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
         }
 
-        .upload-area {
-            border: 2px dashed var(--stage-input-edge);
-            border-radius: 16px;
-            padding: 34px;
+        /* Upload Area */
+        .upload-dropzone {
+            border: 2px dashed #cbd5e1;
+            border-radius: 0.75rem;
+            padding: 2rem;
             text-align: center;
             cursor: pointer;
-            transition: background-color 200ms cubic-bezier(0.22, 1, 0.36, 1),
-                        border-color 200ms cubic-bezier(0.22, 1, 0.36, 1);
-            background: var(--stage-input-tint);
-            color: var(--ink);
-            margin-bottom: 24px;
+            transition: all 0.2s ease;
+            background: #f1f5f9;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
         }
 
-        .upload-area:hover {
-            background: oklch(94% 0.030 215);
-            border-color: var(--stage-input);
-        }
-
-        .upload-area.dragover {
-            background: oklch(91% 0.045 215);
-            border-color: var(--stage-input);
+        .upload-dropzone:hover, .upload-dropzone.dragover {
+            border-color: var(--primary);
+            background: #eef2ff;
         }
 
         .upload-area h3 { color: var(--ink); }
         .upload-area p  { color: var(--ink-soft); }
         .upload-area .file-types { color: var(--muted); }
 
-        .btn {
-            padding: 11px 22px;
-            border: 1px solid transparent;
-            border-radius: 8px;
-            font-size: 0.95em;
-            font-weight: 600;
-            letter-spacing: 0.01em;
-            cursor: pointer;
-            transition: transform 120ms cubic-bezier(0.22, 1, 0.36, 1),
-                        box-shadow 200ms cubic-bezier(0.22, 1, 0.36, 1),
-                        background-color 200ms cubic-bezier(0.22, 1, 0.36, 1),
-                        opacity 150ms ease;
-            margin: 5px;
+        .upload-icon {
+            font-size: 2.5rem;
+            color: var(--primary);
         }
 
-        .btn-primary {
-            background: var(--ink);
-            color: var(--paper);
-            border-color: var(--ink);
-        }
-
-        .btn-primary:hover:not(:disabled) {
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-lift);
-        }
-
-        .btn-primary:disabled {
-            opacity: 0.45;
-            cursor: not-allowed;
-        }
-
-        /* Stage-aware primary buttons: each pipeline action wears its stage color */
-        #conditionBtn {
-            background: var(--stage-process);
-            border-color: var(--stage-process);
-            color: oklch(20% 0.04 70);
-        }
-        #conditionBtn:hover:not(:disabled) {
-            background: oklch(58% 0.16 65);
-            color: var(--paper);
-        }
-
-        #ocrBtn {
-            background: var(--stage-result);
-            border-color: var(--stage-result);
-            color: var(--paper);
-        }
-        #ocrBtn:hover:not(:disabled) {
-            background: oklch(46% 0.14 150);
-        }
-
-        .btn-secondary {
-            background: var(--surface);
-            color: var(--ink);
-            border: 1px solid var(--hairline);
-        }
-
-        .btn-secondary:hover {
-            background: var(--paper-warm);
-            border-color: var(--ink-soft);
-        }
-
-        .btn-ghost {
-            background: transparent;
-            color: var(--ink-soft);
-            border: 1px solid var(--hairline);
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-weight: 600;
-        }
-
-        .btn-ghost:hover:not(:disabled) {
-            background: var(--paper-warm);
-            color: var(--ink);
-        }
-
-        .btn-ghost:disabled {
-            opacity: 0.45;
-            cursor: not-allowed;
-        }
-
-        .text-output {
-            min-height: 400px;
-            max-height: 600px;
-            overflow-y: auto;
-            border: 1px solid var(--stage-result-edge);
-            border-radius: 12px;
-            padding: 16px;
-            background: var(--surface);
-            font-family: 'JetBrains Mono', 'Courier New', monospace;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            position: relative;
-        }
-
-        .text-content.empty {
+        /* Canvas & Image Preview */
+        .preview-container {
+            width: 100%;
+            height: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: var(--muted);
-            font-style: italic;
+            background: #f1f5f9;
+            border-radius: 0.5rem;
+            overflow: hidden;
         }
 
-        .text-content {
+        canvas {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        /* Results Tabs */
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            background: #f1f5f9;
+            padding: 0.25rem;
+            border-radius: 0.5rem;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 0.5rem;
+            border: none;
+            background: transparent;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-radius: 0.375rem;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            background: white;
+            color: var(--primary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .tab-content {
+            flex: 1;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            background: white;
+        }
+
+        #markdownPreview {
+            padding: 1rem;
+        }
+        
+        #markdownPreview h1, #markdownPreview h2, #markdownPreview h3 {
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        #markdownPreview p {
+            margin-bottom: 0.75rem;
+        }
+
+        .raw-text {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.875rem;
             white-space: pre-wrap;
-            word-wrap: break-word;
-            color: var(--ink);
+            word-break: break-all;
         }
 
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid var(--hairline-soft);
-            border-top: 3px solid var(--signal);
+        /* Overlays */
+        .overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            backdrop-filter: blur(4px);
+        }
+
+        .overlay.active {
+            display: flex;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid var(--primary);
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin-right: 10px;
+            margin-bottom: 1rem;
         }
 
         @keyframes spin {
@@ -450,895 +345,786 @@
             100% { transform: rotate(360deg); }
         }
 
-        .alert {
-            padding: 15px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-            display: none;
+        .progress-steps {
+            width: 80%;
+            font-size: 0.75rem;
+            color: var(--text-muted);
         }
 
-        .alert.success {
-            background: var(--success-tint);
-            color: oklch(32% 0.10 150);
-            border: 1px solid var(--stage-result-edge);
-        }
-
-        .alert.error {
-            background: var(--error-tint);
-            color: oklch(38% 0.16 28);
-            border: 1px solid oklch(82% 0.08 28);
-        }
-
-        .alert.info {
-            background: var(--stage-input-tint);
-            color: oklch(38% 0.10 215);
-            border: 1px solid var(--stage-input-edge);
-        }
-
-        .alert.warning {
-            background: var(--warning-tint);
-            color: oklch(38% 0.12 75);
-            border: 1px solid oklch(82% 0.10 75);
-        }
-
-        .description {
-            font-size: 0.9em;
-            color: var(--muted);
-            margin-bottom: 8px;
-        }
-
-        /* Configuration Section */
-        .section {
-            margin-bottom: 20px;
-            border: 1px solid var(--hairline);
-            border-radius: 14px;
-            overflow: hidden;
-            background: var(--surface);
-        }
-
-        .section-header {
-            background: var(--paper-warm);
-            padding: 16px 20px;
-            font-size: 1.05em;
-            font-weight: 700;
-            color: var(--ink);
-            border-bottom: 1px solid var(--hairline);
-            cursor: pointer;
+        .step {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            transition: background-color 150ms ease;
+            gap: 0.5rem;
+            margin-bottom: 0.25rem;
         }
 
-        .section-header:hover {
-            background: oklch(94% 0.012 75);
+        .step-icon {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #e2e8f0;
         }
 
-        .section-content {
-            padding: 20px;
-            display: none;
+        .step.done .step-icon {
+            background: var(--success);
         }
 
-        .section-content.active {
-            display: block;
+        .step.active .step-icon {
+            background: var(--primary);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        /* Action Bar */
+        .action-bar {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 1rem;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-primary:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: white;
+            border-color: var(--border);
+            color: var(--text-main);
+        }
+
+        .btn-secondary:hover {
+            background: #f8fafc;
+        }
+
+        /* Config Section */
+        .config-card {
+            margin-bottom: 2rem;
+        }
+
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.5rem;
         }
 
         .form-group {
-            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
         }
 
         .form-group label {
-            display: block;
-            margin-bottom: 6px;
+            font-size: 0.875rem;
             font-weight: 600;
-            color: var(--ink-soft);
-            font-size: 0.92em;
-            letter-spacing: 0.01em;
+            color: #475569;
         }
 
-        .form-group input[type="text"],
-        .form-group input[type="number"],
-        .form-group select {
-            width: 100%;
-            padding: 9px 10px;
-            border: 1px solid var(--hairline);
-            border-radius: 6px;
-            font-size: 0.95em;
-            background: var(--surface);
-            color: var(--ink);
-            transition: border-color 150ms ease, box-shadow 150ms ease;
-        }
-
-        .form-group input[type="text"]:focus,
-        .form-group input[type="number"]:focus,
-        .form-group select:focus {
+        .form-group select, .form-group input {
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem;
+            border: 1px solid var(--border);
+            font-size: 0.875rem;
+            color: var(--text-main);
             outline: none;
-            border-color: var(--signal);
-            box-shadow: 0 0 0 3px var(--signal-tint);
         }
 
-        .form-group input[type="range"] {
-            width: 100%;
-            accent-color: var(--signal);
+        .form-group select:focus, .form-group input:focus {
+            border-color: var(--primary);
+            ring: 2px solid #e0e7ff;
         }
 
-        .range-value {
-            display: inline-block;
-            margin-left: 10px;
-            font-weight: 700;
-            color: var(--signal);
-            font-variant-numeric: tabular-nums;
-        }
-
-        .model-selector {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .model-card {
-            border: 1px solid var(--hairline);
-            border-radius: 10px;
-            padding: 12px;
-            cursor: pointer;
-            transition: border-color 150ms ease, background-color 150ms ease, transform 150ms ease;
-            background: var(--surface);
-            color: var(--ink);
-        }
-
-        .model-card:hover {
-            border-color: var(--ink-soft);
-            transform: translateY(-1px);
-        }
-
-        .model-card.selected {
-            border-color: var(--stage-result);
-            background: var(--stage-result-tint);
-            color: oklch(35% 0.10 150);
-        }
-
-        .model-card.primary {
-            border-color: var(--stage-process);
-            background: var(--stage-process-tint);
-            color: oklch(35% 0.10 70);
-        }
-
-        .actions {
-            text-align: center;
-            margin-top: 10px;
-        }
-
-        .advanced-panel {
-            margin-top: 16px;
-            padding: 14px;
-            border-radius: 12px;
-            background: var(--surface);
-            border: 1px solid var(--hairline);
+        /* Alerts */
+        .alert-toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            color: white;
+            box-shadow: var(--shadow-lg);
+            z-index: 100;
             display: none;
+            animation: slideIn 0.3s ease-out;
         }
 
-        .advanced-panel.active {
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .alert-success { background: var(--success); }
+        .alert-error { background: var(--error); }
+
+        .empty-state {
+            color: var(--text-muted);
+            font-style: italic;
+            text-align: center;
+            margin-top: 4rem;
+        }
+
+        /* Advanced Mode View */
+        .advanced-container {
+            display: none;
+            margin-top: 2rem;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .advanced-container.active {
             display: block;
         }
 
-        .advanced-grid {
+        .stage-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 12px;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
         }
 
-        .advanced-card {
-            border: 1px solid var(--hairline);
-            border-radius: 10px;
-            padding: 10px;
-            background: var(--paper);
+        .stage-card {
+            background: white;
+            border-radius: 0.75rem;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .stage-card h4 {
+            padding: 0.75rem;
+            font-size: 0.875rem;
+            background: #f8fafc;
+            border-bottom: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .stage-img-container {
+            height: 300px;
             display: flex;
-            flex-direction: column;
-            gap: 6px;
+            align-items: center;
+            justify-content: center;
+            background: #f1f5f9;
+            padding: 1rem;
         }
 
-        .advanced-card h4 {
-            font-size: 0.85em;
-            color: var(--muted);
-            font-weight: 600;
-            letter-spacing: 0.02em;
-            text-transform: uppercase;
+        .stage-img-container img, .stage-img-container canvas {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
         }
 
-        .advanced-canvas {
-            width: 100%;
-            height: 140px;
-            border-radius: 8px;
-            border: 1px solid var(--hairline);
-            background: var(--paper-warm);
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .loading-spinner {
+            border: 2px solid rgba(0,0,0,0.1);
+            border-top: 2px solid var(--primary);
+            border-radius: 50%;
+            width: 12px;
+            height: 12px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
         }
 
-        @media (max-width: 1200px) {
-            .processing-section {
-                grid-template-columns: 1fr;
-            }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <div>
-                <h1><span class="mark">J-Nita</span> v5.0 OCR Studio</h1>
-                <p>Photograph a page, condition it, extract clean Markdown. Three deliberate stages — each shows its work.</p>
+    <div class="app-container">
+        <header>
+            <div class="brand">
+                <h1>J-Nita <span>v6.0</span></h1>
+                <p>Professional Handwriting-Optimized OCR Studio</p>
             </div>
-            <div class="header-meta">
-                <span class="status-pill">Backend: j-nita.onrender.com</span>
-                <span class="status-pill">Pipeline: Input → Process → Result</span>
+            <div class="header-actions">
+                <div class="status-pill" id="backendStatus">
+                    <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#10b981; margin-right:5px;"></span>
+                    Backend Online
+                </div>
+            </div>
+        </header>
+
+        <div class="main-grid">
+            <!-- Image Workspace -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">🖼️ Image Workspace</span>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" id="advancedModeBtn">Advanced Mode</button>
+                        <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" id="clearImgBtn">Clear</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="tabs">
+                        <button class="tab-btn active" data-img-tab="original">1. Input Image</button>
+                        <button class="tab-btn" data-img-tab="conditioned">2. Pre-Processed</button>
+                    </div>
+
+                    <div id="originalImgTab" class="tab-content">
+                        <div class="upload-dropzone" id="dropzone">
+                            <div class="upload-icon">📥</div>
+                            <div>
+                                <strong>Click to upload</strong> or drag and drop
+                                <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">PNG, JPG, WEBP, BMP</p>
+                            </div>
+                            <input type="file" id="fileInput" hidden accept="image/*">
+                        </div>
+                        <div class="preview-container" id="originalPreview" style="display: none;">
+                            <canvas id="originalCanvas"></canvas>
+                        </div>
+                    </div>
+
+                    <div id="conditionedImgTab" class="tab-content" style="display: none; height: 100%; position: relative;">
+                        <div class="preview-container" id="conditionedPreview">
+                            <div class="empty-state" style="margin-top: 2rem;">Will appear after conditioning</div>
+                            <canvas id="conditionedCanvas" style="display: none;"></canvas>
+                        </div>
+                        <div class="overlay" id="conditionOverlay">
+                            <div class="spinner"></div>
+                            <div class="progress-steps" id="conditionSteps">
+                                <!-- Steps added dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- OCR Results -->
+            <div class="card results-panel">
+                <div class="card-header">
+                    <span class="card-title">📝 OCR Results</span>
+                    <div class="header-actions" id="resultActions" style="display:none; gap: 0.5rem;">
+                        <button class="btn btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.8rem;" onclick="copyResult()">📋 Copy</button>
+                        <button class="btn btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.8rem;" onclick="downloadResult('md')">📄 MD</button>
+                        <button class="btn btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.8rem;" onclick="downloadResult('pdf')">📕 PDF</button>
+                        <button class="btn btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.8rem;" onclick="downloadResult('docx')">📘 DOCX</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="tabs">
+                        <button class="tab-btn active" data-tab="preview">Markdown Preview</button>
+                        <button class="tab-btn" data-tab="raw">Raw Text</button>
+                    </div>
+                    <div id="previewTab" class="tab-content">
+                        <div id="markdownPreview" class="markdown-body">
+                            <div class="empty-state" style="margin-top: 2rem;">OCR results will appear here</div>
+                        </div>
+                    </div>
+                    <div id="rawTab" class="tab-content" style="display: none;">
+                        <div id="rawText" class="raw-text"></div>
+                    </div>
+                    <div class="overlay" id="ocrOverlay">
+                        <div class="spinner"></div>
+                        <p style="font-size: 0.875rem; font-weight: 500;">Extracting text...</p>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="content">
-            <div class="alert success" id="successAlert"></div>
-            <div class="alert error" id="errorAlert"></div>
-            <div class="alert info" id="infoAlert"></div>
+        <div class="action-bar">
+            <button class="btn btn-primary" id="conditionBtn" disabled>🖼️ Prepare Image</button>
+            <button class="btn btn-primary" id="ocrBtn" disabled>🔍 Run OCR</button>
+            <button class="btn btn-secondary" id="resetBtn">🔄 Start Over</button>
+        </div>
 
-            <!-- Image Upload -->
-            <div class="upload-area" id="uploadArea">
-                <input type="file" id="fileInput" accept="image/*" style="display: none;">
-                <h3>Upload an image to begin</h3>
-                <p>Drag and drop, or click to select a file for conditioning and OCR.</p>
-                <p class="file-types" style="font-size: 0.9em;">Supports PNG, JPG, JPEG, BMP, TIFF, WEBP</p>
-            </div>
-
-            <!-- Processing Section -->
-            <div class="processing-section">
-                <!-- Original Image -->
-                <div class="image-panel stage-input">
-                    <div class="panel-header">
-                        <h3>Original Image</h3>
-                        <div class="panel-actions">
-                            <span class="status-pill">Input</span>
-                        </div>
-                    </div>
-                    <div class="canvas-container">
-                        <canvas id="originalCanvas"></canvas>
-                        <div class="placeholder" id="originalPlaceholder">No image uploaded</div>
-                    </div>
+        <!-- Advanced Processing Stages -->
+        <div class="advanced-container" id="advancedContainer">
+            <div class="card" style="height: auto; margin-bottom: 2rem;">
+                <div class="card-header">
+                    <span class="card-title">🔬 Advanced Processing Stages</span>
                 </div>
-
-                <!-- Conditioned Image -->
-                <div class="image-panel stage-process">
-                    <div class="panel-header">
-                        <h3>Conditioned Image</h3>
-                        <div class="panel-actions">
-                            <span class="status-pill">Processing</span>
-                            <button class="btn btn-ghost" id="advancedToggle" disabled>Advanced</button>
-                        </div>
-                    </div>
-                    <div class="canvas-container">
-                        <canvas id="conditionedCanvas"></canvas>
-                        <div class="placeholder" id="conditionedPlaceholder">Will appear after conditioning</div>
-                        <div class="progress-overlay" id="conditionOverlay">
-                            <div class="progress-log" id="conditionLog"></div>
-                        </div>
-                    </div>
-                    <div class="advanced-panel" id="advancedPanel">
-                        <div class="advanced-grid">
-                            <div class="advanced-card">
-                                <h4>Corner Detection</h4>
-                                <canvas id="boundingCanvas" class="advanced-canvas"></canvas>
-                            </div>
-                            <div class="advanced-card">
-                                <h4>Smart Crop</h4>
-                                <canvas id="cropCanvas" class="advanced-canvas"></canvas>
-                            </div>
-                            <div class="advanced-card">
-                                <h4>Filter Pass</h4>
-                                <canvas id="filterCanvas" class="advanced-canvas"></canvas>
-                            </div>
-                            <div class="advanced-card">
-                                <h4>Final Conditioned</h4>
-                                <canvas id="finalCanvas" class="advanced-canvas"></canvas>
+                <div class="card-body">
+                    <div class="stage-grid" id="stageGrid">
+                        <div class="stage-card">
+                            <h4>1. Page Detection/Crop</h4>
+                            <div class="stage-img-container">
+                                <div class="empty-state">No data</div>
+                                <img id="stage-crop" style="display:none;">
                             </div>
                         </div>
-                    </div>
-                </div>
-
-                <!-- OCR Results -->
-                <div class="image-panel stage-result">
-                    <div class="panel-header">
-                        <h3>OCR Results</h3>
-                        <div class="panel-actions">
-                            <span class="status-pill">Markdown</span>
+                        <div class="stage-card">
+                            <h4>2. Resizing</h4>
+                            <div class="stage-img-container">
+                                <div class="empty-state">No data</div>
+                                <img id="stage-resize" style="display:none;">
+                            </div>
                         </div>
-                    </div>
-                    <div class="text-output" id="textOutput">
-                        <div class="text-content empty" id="textContent">Text will appear here after OCR processing</div>
-                        <div class="progress-overlay" id="ocrOverlay">
-                            <div class="progress-log" id="ocrLog"></div>
+                        <div class="stage-card">
+                            <h4>3. Adaptive Threshold</h4>
+                            <div class="stage-img-container">
+                                <div class="empty-state">No data</div>
+                                <img id="stage-threshold" style="display:none;">
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Action Buttons -->
-            <div class="actions">
-                <button class="btn btn-primary" id="conditionBtn" disabled>🖼️ Condition Image</button>
-                <button class="btn btn-primary" id="ocrBtn" disabled>🔍 Run OCR</button>
-                <button class="btn btn-secondary" id="resetBtn">🔄 Reset</button>
+        <!-- Configuration Card -->
+        <div class="card config-card" style="height: auto;">
+            <div class="card-header">
+                <span class="card-title">⚙️ Configuration</span>
             </div>
-
-            <!-- Configuration Section -->
-            <div class="section">
-                <div class="section-header" onclick="toggleSection(this)">
-                    <span>⚙️ OCR Configuration</span>
-                    <span>▼</span>
-                </div>
-                <div class="section-content" id="configSection">
-                    <!-- OCR Model Selection -->
+            <div class="card-body">
+                <div class="config-grid">
                     <div class="form-group">
-                        <label>Primary OCR Model</label>
-                        <select id="ocr_model">
-                            <option value="Nanonets-OCR2-3B">Nanonets-OCR2-3B (High Quality)</option>
-                            <option value="Chandra-OCR">Chandra-OCR (Medium Quality)</option>
-                            <option value="Dots.OCR">Dots.OCR (Medium Quality)</option>
-                            <option value="olmOCR-2-7B-1025">olmOCR-2-7B-1025 (High Quality, Slow)</option>
+                        <label for="ocrModel">Primary OCR Model</label>
+                        <select id="ocrModel">
+                            <option value="Nanonets-OCR2-3B">Nanonets-OCR2-3B (Recommended)</option>
+                            <option value="olmOCR-2-7B-1025">olmOCR-2-7B-1025 (High Quality)</option>
+                            <option value="Chandra-OCR">Chandra-OCR (Fast)</option>
+                            <option value="Dots.OCR">Dots.OCR (Standard)</option>
                         </select>
                     </div>
-
                     <div class="form-group">
-                        <label>Fallback Models</label>
-                        <div class="model-selector" id="fallbackModels">
-                            <div class="model-card" data-model="Nanonets-OCR2-3B">Nanonets-OCR2-3B</div>
-                            <div class="model-card" data-model="Chandra-OCR">Chandra-OCR</div>
-                            <div class="model-card" data-model="Dots.OCR">Dots.OCR</div>
-                            <div class="model-card" data-model="olmOCR-2-7B-1025">olmOCR-2-7B-1025</div>
-                        </div>
+                        <label for="strengthRange">Conditioning Strength (<span id="strengthVal">10</span>)</label>
+                        <input type="range" id="strengthRange" min="0" max="100" value="10">
                     </div>
-
                     <div class="form-group">
-                        <label>Conditioning Strength</label>
-                        <input type="range" id="strength" min="0" max="100" value="10" oninput="updateRangeValue(this)">
-                        <span class="range-value" id="strength_value">10</span>
-                    </div>
-
-                    <div class="form-group">
-                        <label>PNG Compression</label>
-                        <input type="range" id="png_compression" min="0" max="9" value="0" oninput="updateRangeValue(this)">
-                        <span class="range-value" id="png_compression_value">0</span>
+                        <label for="compressionRange">PNG Compression (<span id="compressionVal">1</span>)</label>
+                        <input type="range" id="compressionRange" min="0" max="9" value="1">
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <div id="alertToast" class="alert-toast"></div>
+
     <script>
-        const API_BASE = 'https://j-nita.onrender.com';
+        const API_BASE = window.location.origin; // Using local port
         let currentImage = null;
         let conditionedImage = null;
-        let originalImageElement = null;
-        let conditionedImageElement = null;
-        let backendWarmed = false;
+        let originalImgEl = null;
 
-        // Initialize
-        document.getElementById('fileInput').addEventListener('change', handleFileSelect);
-        document.getElementById('uploadArea').addEventListener('click', () => document.getElementById('fileInput').click());
-        document.getElementById('uploadArea').addEventListener('dragover', handleDragOver);
-        document.getElementById('uploadArea').addEventListener('drop', handleDrop);
-        document.getElementById('conditionBtn').addEventListener('click', conditionImage);
-        document.getElementById('ocrBtn').addEventListener('click', processOCR);
-        document.getElementById('resetBtn').addEventListener('click', resetAll);
-        document.getElementById('advancedToggle').addEventListener('click', toggleAdvancedPanel);
+        // Elements
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('fileInput');
+        const conditionBtn = document.getElementById('conditionBtn');
+        const ocrBtn = document.getElementById('ocrBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const advancedModeBtn = document.getElementById('advancedModeBtn');
+        const advancedContainer = document.getElementById('advancedContainer');
+        const strengthRange = document.getElementById('strengthRange');
+        const compressionRange = document.getElementById('compressionRange');
+        const ocrModel = document.getElementById('ocrModel');
 
-        // Model card selection
-        document.querySelectorAll('.model-card').forEach(card => {
-            card.addEventListener('click', function() {
-                const primaryModel = document.getElementById('ocr_model').value;
-                if (this.dataset.model !== primaryModel) {
-                    this.classList.toggle('selected');
+        let handwriting_mode = true; // Default to true
+        let advanced_mode = false;
+        let stepsIntervalId = null;
+
+        // Initialize marked
+        marked.setOptions({
+            breaks: true,
+            gfm: true
+        });
+
+        // Event Listeners
+        dropzone.addEventListener('click', () => fileInput.click());
+        dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+        dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) handleFile(e.target.files[0]);
+        });
+
+        conditionBtn.addEventListener('click', processConditioning);
+        ocrBtn.addEventListener('click', processOCR);
+        resetBtn.addEventListener('click', resetAll);
+
+        advancedModeBtn.addEventListener('click', () => {
+            advanced_mode = !advanced_mode;
+            advancedContainer.classList.toggle('active', advanced_mode);
+            advancedModeBtn.textContent = advanced_mode ? 'Hide Advanced' : 'Advanced Mode';
+            if (advanced_mode) {
+                advancedContainer.scrollIntoView({ behavior: 'smooth' });
+            }
+        });
+
+        strengthRange.addEventListener('input', (e) => {
+            document.getElementById('strengthVal').textContent = e.target.value;
+        });
+        compressionRange.addEventListener('input', (e) => {
+            document.getElementById('compressionVal').textContent = e.target.value;
+        });
+
+        // Set default values for handwriting
+        strengthRange.value = 35;
+        document.getElementById('strengthVal').textContent = 35;
+        ocrModel.value = 'olmOCR-2-7B-1025';
+
+        // Tabs
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const parent = btn.parentElement;
+                parent.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                if (btn.dataset.tab) {
+                    // OCR Results Tabs
+                    if (btn.dataset.tab === 'preview') {
+                        document.getElementById('previewTab').style.display = 'block';
+                        document.getElementById('rawTab').style.display = 'none';
+                    } else {
+                        document.getElementById('previewTab').style.display = 'none';
+                        document.getElementById('rawTab').style.display = 'block';
+                    }
+                } else if (btn.dataset.imgTab) {
+                    // Image Workspace Tabs
+                    if (btn.dataset.imgTab === 'original') {
+                        document.getElementById('originalImgTab').style.display = 'block';
+                        document.getElementById('conditionedImgTab').style.display = 'none';
+                    } else {
+                        document.getElementById('originalImgTab').style.display = 'none';
+                        document.getElementById('conditionedImgTab').style.display = 'block';
+                    }
                 }
             });
         });
 
-        document.getElementById('ocr_model').addEventListener('change', updatePrimaryModel);
-        updatePrimaryModel();
-
-        function drawImageToCanvas(img, canvas, options = {}) {
-            const ctx = canvas.getContext('2d');
-            let maxWidth = options.maxWidth || canvas.parentElement.clientWidth - 30;
-            let maxHeight = options.maxHeight || canvas.parentElement.clientHeight - 30;
-            if (maxWidth <= 0) maxWidth = canvas.clientWidth || 320;
-            if (maxHeight <= 0) maxHeight = canvas.clientHeight || 240;
-            const ratio = Math.min(maxWidth / img.width, maxHeight / img.height);
-            const width = img.width * ratio;
-            const height = img.height * ratio;
-            const offsetX = (maxWidth - width) / 2;
-            const offsetY = (maxHeight - height) / 2;
-
-            canvas.width = maxWidth;
-            canvas.height = maxHeight;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, offsetX, offsetY, width, height);
-
-            return { ctx, width, height, offsetX, offsetY, scale: ratio };
-        }
-
-        function createLogLine(container, message) {
-            const line = document.createElement('div');
-            line.className = 'progress-line';
-            line.innerHTML = `<span class="progress-icon">⏳</span><span class="progress-message">${message}</span>`;
-            container.appendChild(line);
-            container.scrollTop = container.scrollHeight;
-            return line;
-        }
-
-        function markLogLine(line, status, message) {
-            const icon = line.querySelector('.progress-icon');
-            const text = line.querySelector('.progress-message');
-            if (status === 'complete') {
-                line.classList.add('complete');
-                icon.textContent = '✅';
-            } else if (status === 'error') {
-                line.classList.add('error');
-                icon.textContent = '⚠️';
-            } else {
-                icon.textContent = '⏳';
-            }
-            if (message) {
-                text.textContent = message;
-            }
-        }
-
-        function showOverlay(overlayId) {
-            const overlay = document.getElementById(overlayId);
-            overlay.classList.add('active');
-        }
-
-        function hideOverlay(overlayId) {
-            const overlay = document.getElementById(overlayId);
-            overlay.classList.remove('active');
-        }
-
-        async function wait(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
-        }
-
-        async function fetchWithTimeout(resource, options = {}, timeoutMs = 4000) {
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), timeoutMs);
-            try {
-                return await fetch(resource, { ...options, signal: controller.signal });
-            } finally {
-                clearTimeout(timeout);
-            }
-        }
-
-        async function warmBackend(container) {
-            if (backendWarmed) {
-                return true;
-            }
-            const line = createLogLine(container, 'Waking backend (cold start on Render)');
-            for (let attempt = 1; attempt <= 3; attempt++) {
-                try {
-                    markLogLine(line, 'pending', `Waking backend (attempt ${attempt}/3)`);
-                    const response = await fetchWithTimeout(`${API_BASE}/api/health`, { cache: 'no-store' }, 5000);
-                    if (response.ok) {
-                        backendWarmed = true;
-                        markLogLine(line, 'complete', 'Backend is awake and responding.');
-                        return true;
-                    }
-                } catch (error) {
-                    markLogLine(line, 'pending', 'Waiting for backend response...');
-                    await wait(1200);
-                }
-            }
-            markLogLine(line, 'error', 'Backend is still waking up. Continuing with request.');
-            return false;
-        }
-
-        async function runStage(container, message, delay = 650) {
-            const line = createLogLine(container, message);
-            await wait(delay);
-            markLogLine(line, 'complete');
-            return line;
-        }
-
-        async function waitForPromiseWithUpdates(container, promise, message) {
-            const line = createLogLine(container, message);
-            let resolved = false;
-            while (!resolved) {
-                try {
-                    const result = await Promise.race([promise, wait(1200)]);
-                    if (result !== undefined) {
-                        resolved = true;
-                        markLogLine(line, 'complete', 'Backend response received.');
-                        return result;
-                    }
-                    markLogLine(line, 'pending', 'Waiting for backend response...');
-                } catch (error) {
-                    markLogLine(line, 'error', 'Backend request failed.');
-                    throw error;
-                }
-            }
-            return await promise;
-        }
-
-        function updatePrimaryModel() {
-            const primaryModel = document.getElementById('ocr_model').value;
-            document.querySelectorAll('.model-card').forEach(card => {
-                card.classList.remove('primary', 'selected');
-                if (card.dataset.model === primaryModel) {
-                    card.classList.add('primary');
-                }
-            });
-        }
-
-        function handleDragOver(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            e.currentTarget.classList.add('dragover');
-        }
-
-        function handleDrop(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            e.currentTarget.classList.remove('dragover');
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                handleFile(files[0]);
-            }
-        }
-
-        function handleFileSelect(e) {
-            if (e.target.files.length > 0) {
-                handleFile(e.target.files[0]);
-            }
+        function switchImageTab(tabName) {
+            const btn = document.querySelector(`.tab-btn[data-img-tab="${tabName}"]`);
+            if (btn) btn.click();
         }
 
         function handleFile(file) {
             if (!file.type.startsWith('image/')) {
-                showAlert('error', 'Please upload an image file');
+                showToast('Please upload an image file', 'error');
                 return;
             }
 
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = (e) => {
                 const img = new Image();
-                img.onload = function() {
+                img.onload = () => {
                     currentImage = e.target.result;
-                    originalImageElement = img;
-                    displayImage(img, 'originalCanvas', 'originalPlaceholder');
-                    document.getElementById('conditionBtn').disabled = false;
-                    document.getElementById('ocrBtn').disabled = true;
-                    document.getElementById('conditionedPlaceholder').style.display = 'block';
-                    const textContent = document.getElementById('textContent');
-                    textContent.textContent = 'Text will appear here after OCR processing';
-                    textContent.classList.add('empty');
-                    resetAdvancedPanel();
-                    hideOverlay('conditionOverlay');
-                    hideOverlay('ocrOverlay');
+                    originalImgEl = img;
+                    document.getElementById('dropzone').style.display = 'none';
+                    document.getElementById('originalPreview').style.display = 'flex';
+                    renderCanvas(img, 'originalCanvas');
+                    conditionBtn.disabled = false;
+                    switchImageTab('original');
                 };
                 img.src = e.target.result;
             };
             reader.readAsDataURL(file);
         }
 
-        function displayImage(img, canvasId, placeholderId) {
+        function renderCanvas(img, canvasId) {
             const canvas = document.getElementById(canvasId);
-            const placeholder = document.getElementById(placeholderId);
-            placeholder.style.display = 'none';
+            const ctx = canvas.getContext('2d');
+            
+            // Ensure container is visible before measuring
+            const tab = canvas.closest('.tab-content');
+            const wasHidden = tab.style.display === 'none';
+            if (wasHidden) tab.style.display = 'block';
+            
+            const parent = canvas.parentElement;
+            const parentWidth = parent.clientWidth || 600;
+            const parentHeight = parent.clientHeight || 500;
+            
+            if (wasHidden) tab.style.display = 'none';
+            
+            const ratio = Math.min(parentWidth / img.width, parentHeight / img.height);
+            canvas.width = img.width * ratio;
+            canvas.height = img.height * ratio;
+            
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
             canvas.style.display = 'block';
-
-            drawImageToCanvas(img, canvas, {
-                maxWidth: canvas.parentElement.clientWidth - 30,
-                maxHeight: 400
-            });
         }
 
-        async function conditionImage() {
-            if (!currentImage) {
-                showAlert('error', 'Please upload an image first');
-                return;
-            }
+        async function processConditioning() {
+            if (!currentImage) return;
 
-            const btn = document.getElementById('conditionBtn');
-            btn.disabled = true;
-            btn.innerHTML = '<span class="loading"></span> Conditioning...';
+            conditionBtn.disabled = true;
+            switchImageTab('conditioned');
+            setLoading('condition', true);
+            const steps = [
+                'Validating image...',
+                'Detecting boundaries...',
+                'Applying filters...',
+                'Optimizing for OCR...'
+            ];
+            updateSteps('conditionSteps', steps);
 
-            const logContainer = document.getElementById('conditionLog');
-            logContainer.innerHTML = '';
-            showOverlay('conditionOverlay');
-            document.getElementById('conditionedPlaceholder').style.display = 'none';
-            document.getElementById('conditionedCanvas').style.display = 'none';
-            resetAdvancedPanel();
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 90000);
 
             try {
-                const strength = parseInt(document.getElementById('strength').value);
-                const compression = parseInt(document.getElementById('png_compression').value);
-
-                await warmBackend(logContainer);
-
-                const requestPromise = fetch(`${API_BASE}/api/condition`, {
+                const response = await fetch(`${API_BASE}/api/condition`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    signal: controller.signal,
                     body: JSON.stringify({
                         image: currentImage,
+                        return_stages: true,
                         config: {
-                            strength: strength,
-                            png_compression: compression
+                            strength: parseInt(strengthRange.value),
+                            png_compression: parseInt(compressionRange.value)
                         }
                     })
                 });
 
-                const stages = [
-                    'Validating orientation and metadata',
-                    'Detecting page edges and corners',
-                    'Estimating bounding box geometry',
-                    'Cropping to the document region',
-                    'Resizing for OCR clarity',
-                    'Applying denoise + adaptive threshold',
-                    'Refining strokes with morphology'
-                ];
-
-                for (const stage of stages) {
-                    await runStage(logContainer, stage, 520);
-                }
-
-                const response = await waitForPromiseWithUpdates(
-                    logContainer,
-                    requestPromise,
-                    'Waiting for backend response'
-                );
-
-                if (!response.ok) {
-                    throw new Error(`Backend responded with ${response.status}`);
-                }
-
                 const data = await response.json();
-
                 if (data.success) {
                     conditionedImage = data.conditioned_image;
                     const img = new Image();
-                    img.onload = function() {
-                        conditionedImageElement = img;
-                        displayImage(img, 'conditionedCanvas', 'conditionedPlaceholder');
-                        document.getElementById('ocrBtn').disabled = false;
-                        document.getElementById('advancedToggle').disabled = false;
-                        renderAdvancedCanvases();
-                        hideOverlay('conditionOverlay');
-                        showAlert('success', 'Image conditioned successfully!');
+                    img.onload = () => {
+                        renderCanvas(img, 'conditionedCanvas');
+                        document.querySelector('#conditionedPreview .empty-state').style.display = 'none';
+                        ocrBtn.disabled = false;
+
+                        if (data.stages) {
+                            updateAdvancedStages(data.stages);
+                        }
+
+                        showToast('Image pre-processed successfully', 'success');
                     };
-                    img.src = data.conditioned_image;
+                    img.src = conditionedImage;
                 } else {
-                    const line = createLogLine(logContainer, 'Conditioning failed');
-                    markLogLine(line, 'error', data.error || 'Failed to condition image');
-                    showAlert('error', data.error || 'Failed to condition image');
+                    throw new Error(data.error || 'Conditioning failed');
                 }
-            } catch (error) {
-                const line = createLogLine(logContainer, 'Conditioning failed');
-                markLogLine(line, 'error', `Error: ${error.message}`);
-                showAlert('error', 'Error: ' + error.message);
+            } catch (err) {
+                if (err.name === 'AbortError') {
+                    showToast('Request timed out – try a smaller image', 'error');
+                } else {
+                    showToast(err.message, 'error');
+                }
             } finally {
-                btn.disabled = false;
-                btn.innerHTML = '🖼️ Condition Image';
+                clearTimeout(timeoutId);
+                setLoading('condition', false);
+                conditionBtn.disabled = false;
+            }
+        }
+
+        function updateAdvancedStages(stages) {
+            const cropImg = document.getElementById('stage-crop');
+            const resizeImg = document.getElementById('stage-resize');
+            const thresholdImg = document.getElementById('stage-threshold');
+            
+            if (stages.crop) {
+                cropImg.src = stages.crop;
+                cropImg.style.display = 'block';
+                cropImg.previousElementSibling.style.display = 'none';
+            }
+            if (stages.resize) {
+                resizeImg.src = stages.resize;
+                resizeImg.style.display = 'block';
+                resizeImg.previousElementSibling.style.display = 'none';
+            }
+            if (stages.threshold) {
+                thresholdImg.src = stages.threshold;
+                thresholdImg.style.display = 'block';
+                thresholdImg.previousElementSibling.style.display = 'none';
             }
         }
 
         async function processOCR() {
-            if (!conditionedImage) {
-                showAlert('error', 'Please condition the image first');
-                return;
-            }
+            if (!conditionedImage) return;
 
-            const btn = document.getElementById('ocrBtn');
-            btn.disabled = true;
-            btn.innerHTML = '<span class="loading"></span> Processing OCR...';
+            ocrBtn.disabled = true;
+            setLoading('ocr', true);
 
-            const logContainer = document.getElementById('ocrLog');
-            logContainer.innerHTML = '';
-            showOverlay('ocrOverlay');
-            const textContent = document.getElementById('textContent');
-            textContent.textContent = 'OCR running...';
-            textContent.classList.add('empty');
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 180000);
 
             try {
-                const model = document.getElementById('ocr_model').value;
-                const fallbackModels = Array.from(document.querySelectorAll('.model-card.selected'))
-                    .map(card => card.dataset.model);
-
-                await warmBackend(logContainer);
-
-                const requestPromise = fetch(`${API_BASE}/api/ocr`, {
+                const response = await fetch(`${API_BASE}/api/ocr`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    signal: controller.signal,
                     body: JSON.stringify({
                         image: conditionedImage,
-                        model: model,
-                        fallback_models: fallbackModels,
-                        enable_fallback: fallbackModels.length > 0
+                        model: document.getElementById('ocrModel').value,
+                        enable_fallback: true,
+                        handwriting_mode: handwriting_mode
                     })
                 });
 
-                const stages = [
-                    'Preparing OCR payload',
-                    `Selecting model: ${model}`,
-                    'Submitting request to OCR engine',
-                    'Running text extraction',
-                    'Normalizing response format'
-                ];
-
-                for (const stage of stages) {
-                    await runStage(logContainer, stage, 520);
-                }
-
-                const response = await waitForPromiseWithUpdates(
-                    logContainer,
-                    requestPromise,
-                    'Waiting for OCR response'
-                );
-
-                if (!response.ok) {
-                    throw new Error(`Backend responded with ${response.status}`);
-                }
-
                 const data = await response.json();
-
                 if (data.success) {
-                    const textContent = document.getElementById('textContent');
-                    textContent.textContent = data.raw_text || data.markdown_text || 'No text extracted';
-                    textContent.classList.remove('empty');
-                    hideOverlay('ocrOverlay');
-                    showAlert('success', `OCR completed using model: ${data.model_used}`);
+                    const text = data.markdown_text || data.raw_text;
+                    document.getElementById('rawText').textContent = data.raw_text;
+                    document.getElementById('markdownPreview').innerHTML = marked.parse(text);
+                    document.getElementById('resultActions').style.display = 'flex';
+                    showToast('OCR Completed', 'success');
                 } else {
-                    const line = createLogLine(logContainer, 'OCR failed');
-                    markLogLine(line, 'error', data.error || 'OCR processing failed');
-                    showAlert('error', data.error || 'OCR processing failed');
+                    throw new Error(data.error || 'OCR failed');
                 }
-            } catch (error) {
-                const line = createLogLine(logContainer, 'OCR failed');
-                markLogLine(line, 'error', `Error: ${error.message}`);
-                showAlert('error', 'Error: ' + error.message);
+            } catch (err) {
+                if (err.name === 'AbortError') {
+                    showToast('OCR timed out – try a different model', 'error');
+                } else {
+                    showToast(err.message, 'error');
+                }
             } finally {
-                btn.disabled = false;
-                btn.innerHTML = '🔍 Run OCR';
+                clearTimeout(timeoutId);
+                setLoading('ocr', false);
+                ocrBtn.disabled = false;
             }
         }
 
-        function toggleAdvancedPanel() {
-            const panel = document.getElementById('advancedPanel');
-            panel.classList.toggle('active');
-            const button = document.getElementById('advancedToggle');
-            button.textContent = panel.classList.contains('active') ? 'Hide Advanced' : 'Advanced';
+        function setLoading(type, isLoading) {
+            const overlay = document.getElementById(type + 'Overlay');
+            if (isLoading) overlay.classList.add('active');
+            else overlay.classList.remove('active');
         }
 
-        function resetAdvancedPanel() {
-            const panel = document.getElementById('advancedPanel');
-            panel.classList.remove('active');
-            document.getElementById('advancedToggle').disabled = true;
-            document.getElementById('advancedToggle').textContent = 'Advanced';
-        }
-
-        function renderAdvancedCanvases() {
-            if (!originalImageElement || !conditionedImageElement) {
-                return;
+        function updateSteps(containerId, steps) {
+            if (stepsIntervalId) {
+                clearInterval(stepsIntervalId);
+                stepsIntervalId = null;
             }
+            const container = document.getElementById(containerId);
+            container.innerHTML = steps.map((s, i) => `
+                <div class="step" id="step-${i}">
+                    <div class="step-icon"></div>
+                    <span>${s}</span>
+                </div>
+            `).join('');
 
-            renderBoundingBox(originalImageElement);
-            renderCropPreview(originalImageElement);
-            renderFilterPreview(originalImageElement);
-            renderFinalPreview(conditionedImageElement);
+            let currentStep = 0;
+            stepsIntervalId = setInterval(() => {
+                if (currentStep > 0) document.getElementById(`step-${currentStep-1}`).className = 'step done';
+                if (currentStep < steps.length) {
+                    document.getElementById(`step-${currentStep}`).className = 'step active';
+                    currentStep++;
+                } else {
+                    clearInterval(stepsIntervalId);
+                    stepsIntervalId = null;
+                }
+            }, 600);
         }
 
-        function renderBoundingBox(img) {
-            const canvas = document.getElementById('boundingCanvas');
-            const { ctx, width, height, offsetX, offsetY } = drawImageToCanvas(img, canvas, {
-                maxWidth: canvas.clientWidth,
-                maxHeight: canvas.clientHeight
-            });
-            // Matches --stage-process (amber): bounding box belongs to the conditioning stage
-            ctx.strokeStyle = '#c98a2a';
-            ctx.lineWidth = 2;
-            const insetX = width * 0.08;
-            const insetY = height * 0.08;
-            ctx.strokeRect(offsetX + insetX, offsetY + insetY, width - insetX * 2, height - insetY * 2);
-        }
-
-        function renderCropPreview(img) {
-            const canvas = document.getElementById('cropCanvas');
-            const ctx = canvas.getContext('2d');
-            const width = canvas.clientWidth;
-            const height = canvas.clientHeight;
-            canvas.width = width;
-            canvas.height = height;
-
-            const cropWidth = img.width * 0.8;
-            const cropHeight = img.height * 0.8;
-            const sx = (img.width - cropWidth) / 2;
-            const sy = (img.height - cropHeight) / 2;
-            ctx.clearRect(0, 0, width, height);
-            ctx.drawImage(img, sx, sy, cropWidth, cropHeight, 0, 0, width, height);
-        }
-
-        function renderFilterPreview(img) {
-            const canvas = document.getElementById('filterCanvas');
-            const { ctx } = drawImageToCanvas(img, canvas, {
-                maxWidth: canvas.clientWidth,
-                maxHeight: canvas.clientHeight
-            });
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const data = imageData.data;
-            for (let i = 0; i < data.length; i += 4) {
-                const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-                const boost = avg > 170 ? 255 : avg * 0.9;
-                data[i] = boost;
-                data[i + 1] = boost;
-                data[i + 2] = boost;
-            }
-            ctx.putImageData(imageData, 0, 0);
-        }
-
-        function renderFinalPreview(img) {
-            const canvas = document.getElementById('finalCanvas');
-            drawImageToCanvas(img, canvas, {
-                maxWidth: canvas.clientWidth,
-                maxHeight: canvas.clientHeight
-            });
-        }
-
-        function clearCanvas(canvasId) {
-            const canvas = document.getElementById(canvasId);
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        function showToast(msg, type) {
+            const toast = document.getElementById('alertToast');
+            toast.textContent = msg;
+            toast.className = `alert-toast alert-${type}`;
+            toast.style.display = 'block';
+            setTimeout(() => toast.style.display = 'none', 3000);
         }
 
         function resetAll() {
             currentImage = null;
             conditionedImage = null;
-            originalImageElement = null;
-            conditionedImageElement = null;
-            document.getElementById('originalCanvas').style.display = 'none';
-            document.getElementById('conditionedCanvas').style.display = 'none';
-            document.getElementById('originalPlaceholder').style.display = 'block';
-            document.getElementById('conditionedPlaceholder').style.display = 'block';
-            const textContent = document.getElementById('textContent');
-            textContent.textContent = 'Text will appear here after OCR processing';
-            textContent.classList.add('empty');
-            document.getElementById('conditionBtn').disabled = true;
-            document.getElementById('ocrBtn').disabled = true;
             document.getElementById('fileInput').value = '';
-            resetAdvancedPanel();
-            hideOverlay('conditionOverlay');
-            hideOverlay('ocrOverlay');
-            clearCanvas('boundingCanvas');
-            clearCanvas('cropCanvas');
-            clearCanvas('filterCanvas');
-            clearCanvas('finalCanvas');
-            document.getElementById('conditionLog').innerHTML = '';
-            document.getElementById('ocrLog').innerHTML = '';
+            document.getElementById('dropzone').style.display = 'flex';
+            document.getElementById('originalPreview').style.display = 'none';
+            document.getElementById('conditionedCanvas').style.display = 'none';
+            document.querySelector('#conditionedPreview .empty-state').style.display = 'block';
+            document.getElementById('markdownPreview').innerHTML = '<div class="empty-state">OCR results will appear here</div>';
+            document.getElementById('rawText').textContent = '';
+            document.getElementById('resultActions').style.display = 'none';
+            conditionBtn.disabled = true;
+            ocrBtn.disabled = true;
+            switchImageTab('original');
+            
+            // Clear stages
+            ['crop', 'resize', 'threshold'].forEach(id => {
+                const img = document.getElementById(`stage-${id}`);
+                img.src = '';
+                img.style.display = 'none';
+                img.previousElementSibling.style.display = 'block';
+            });
+            advanced_mode = false;
+            advancedContainer.classList.remove('active');
+            advancedModeBtn.textContent = 'Advanced Mode';
         }
 
-        function showAlert(type, message) {
-            const alert = document.getElementById(type + 'Alert');
-            if (alert) {
-                alert.textContent = message;
-                alert.style.display = 'block';
-                setTimeout(() => {
-                    alert.style.display = 'none';
-                }, 5000);
+        function copyResult() {
+            const text = document.getElementById('rawText').textContent;
+            navigator.clipboard.writeText(text);
+            showToast('Copied to clipboard', 'success');
+        }
+
+        async function downloadResult(format = 'md') {
+            const btn = event ? event.currentTarget : null;
+            const originalText = btn ? btn.innerHTML : '';
+            const text = document.getElementById('rawText').textContent;
+
+            if (format === 'md') {
+                const blob = new Blob([text], { type: 'text/markdown' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'ocr_result.md';
+                a.click();
+            } else {
+                try {
+                    if (btn) {
+                        btn.disabled = true;
+                        btn.innerHTML = `<span class="loading-spinner" style="width: 12px; height: 12px; border-width: 2px; display: inline-block; vertical-align: middle;"></span>`;
+                    }
+                    
+                    const response = await fetch(`${API_BASE}/api/export/${format}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ markdown_text: text })
+                    });
+                    
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `ocr_result.${format}`;
+                        a.click();
+                    } else {
+                        const errData = await response.json().catch(() => ({}));
+                        showToast(`Failed to export ${format}: ${errData.error || 'Unknown error'}`, 'error');
+                    }
+                } catch (err) {
+                    showToast(err.message, 'error');
+                } finally {
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = originalText;
+                    }
+                }
             }
         }
-
-        function toggleSection(header) {
-            const content = header.nextElementSibling;
-            const arrow = header.querySelector('span:last-child');
-            content.classList.toggle('active');
-            arrow.textContent = content.classList.contains('active') ? '▼' : '▶';
-        }
-
-        function updateRangeValue(input) {
-            const valueSpan = document.getElementById(input.id + '_value');
-            if (valueSpan) {
-                valueSpan.textContent = input.value;
-            }
-        }
-
     </script>
 </body>
 </html>
