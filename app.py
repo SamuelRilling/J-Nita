@@ -14,7 +14,10 @@ from PIL import Image
 import numpy as np
 import cv2
 from image_conditioner import ImageConditioner
+from orientation_validator import detect_gibberish
 from gradio_client import Client, handle_file
+from fpdf import FPDF
+from docx import Document
 import logging
 
 app = Flask(__name__)
@@ -45,6 +48,11 @@ def get_ocr_client():
             raise
     return ocr_client
 
+@app.route('/')
+def index():
+    """Serve the frontend."""
+    return send_file('index.html')
+
 
 @app.route('/api/health', methods=['GET'])
 def health():
@@ -63,6 +71,7 @@ def condition_image():
         data = request.json
         image_data = data.get('image')
         config_overrides = data.get('config', {})
+        return_stages = data.get('return_stages', False)
         
         if not image_data:
             return jsonify({"error": "No image data provided"}), 400
@@ -113,14 +122,47 @@ def condition_image():
                 debug_mode=False
             )
 
-            output_image = conditioner.condition_image_array(image_array, filename="upload")
-            _, buffer = cv2.imencode('.png', output_image)
-            output_base64 = base64.b64encode(buffer).decode('utf-8')
+            if return_stages:
+                output_image, stages = conditioner.condition_image_array(image_array, filename="upload", return_stages=True)
 
-            return jsonify({
-                "conditioned_image": f"data:image/png;base64,{output_base64}",
-                "success": True
-            })
+                # Cap output dimensions and apply compression to keep response manageable
+                h, w = output_image.shape[:2]
+                if max(h, w) > 2000:
+                    scale = 2000 / max(h, w)
+                    output_image = cv2.resize(output_image, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+                _, buffer = cv2.imencode('.png', output_image, [cv2.IMWRITE_PNG_COMPRESSION, 6])
+                output_base64 = base64.b64encode(buffer).decode('utf-8')
+
+                # Encode stages at preview resolution using JPEG to minimize response size
+                encoded_stages = {}
+                for name, img in stages.items():
+                    sh, sw = img.shape[:2]
+                    if max(sh, sw) > 800:
+                        scale = 800 / max(sh, sw)
+                        img = cv2.resize(img, (int(sw * scale), int(sh * scale)), interpolation=cv2.INTER_AREA)
+                    _, buf = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 75])
+                    encoded_stages[name] = f"data:image/jpeg;base64,{base64.b64encode(buf).decode('utf-8')}"
+
+                return jsonify({
+                    "conditioned_image": f"data:image/png;base64,{output_base64}",
+                    "stages": encoded_stages,
+                    "success": True
+                })
+            else:
+                output_image = conditioner.condition_image_array(image_array, filename="upload")
+
+                # Cap output dimensions and apply compression
+                h, w = output_image.shape[:2]
+                if max(h, w) > 2000:
+                    scale = 2000 / max(h, w)
+                    output_image = cv2.resize(output_image, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+                _, buffer = cv2.imencode('.png', output_image, [cv2.IMWRITE_PNG_COMPRESSION, 6])
+                output_base64 = base64.b64encode(buffer).decode('utf-8')
+
+                return jsonify({
+                    "conditioned_image": f"data:image/png;base64,{output_base64}",
+                    "success": True
+                })
     
     except Exception as e:
         logger.error(f"Error conditioning image: {e}", exc_info=True)
@@ -131,7 +173,7 @@ def condition_image():
 def process_ocr():
     """
     Process OCR on a conditioned image.
-    Expects: JSON with 'image' (base64), 'model' (optional), 'fallback_models' (optional)
+    Expects: JSON with 'image' (base64), 'model' (optional), 'fallback_models' (optional), 'handwriting_mode' (optional)
     Returns: OCR text results
     """
     try:
@@ -140,6 +182,7 @@ def process_ocr():
         model = data.get('model', 'Nanonets-OCR2-3B')
         fallback_models = data.get('fallback_models', [])
         enable_fallback = data.get('enable_fallback', True)
+        handwriting_mode = data.get('handwriting_mode', False)
         
         if not image_data:
             return jsonify({"error": "No image data provided"}), 400
@@ -155,6 +198,19 @@ def process_ocr():
         try:
             client = get_ocr_client()
             
+            # Load config for handwriting prompt
+            config_path = os.path.join(os.path.dirname(__file__), 'config.json')
+            try:
+                with open(config_path, 'r') as f:
+                    config = json.load(f)
+                handwriting_prompt = config.get("ocr_workflow", {}).get("handwriting_prompt", {}).get("value", "This image contains handwritten text. Please perform OCR and extract all text exactly as written, maintaining the layout where possible. Output in well-formatted Markdown.")
+                if handwriting_mode:
+                    model = config.get("ocr_workflow", {}).get("handwriting_model", {}).get("value", "olmOCR-2-7B-1025")
+            except Exception:
+                handwriting_prompt = "This image contains handwritten text. Please perform OCR and extract all text exactly as written, maintaining the layout where possible. Output in well-formatted Markdown."
+            
+            prompt = handwriting_prompt if handwriting_mode else "Perform OCR on the image."
+            
             # Build list of models to try
             models_to_try = [model]
             if enable_fallback and fallback_models:
@@ -166,24 +222,41 @@ def process_ocr():
             model_used = None
             last_error = ""
             
+            # Gibberish detection results
+            is_gibberish = False
+            gibberish_score = 0.0
+            gibberish_reason = ""
+            
             for model_name in models_to_try:
                 try:
-                    logger.info(f"Trying OCR model: {model_name}")
+                    logger.info(f"Trying OCR model: {model_name} with mode: {'handwriting' if handwriting_mode else 'standard'}")
                     result = client.predict(
                         model_name,
-                        "Perform OCR on the image.",
+                        prompt,
                         handle_file(tmp_path),
                         2048,
                         0.7,
                         0.9,
                         50,
                         1.1,
-                        api_name="/generate_image"
+                        60,
+                        api_name="/run_ocr"
                     )
                     
                     raw_output = str(result[0]) if isinstance(result, (list, tuple)) and len(result) > 0 else ""
                     markdown_output = str(result[1]) if isinstance(result, (list, tuple)) and len(result) > 1 else raw_output
                     model_used = model_name
+                    
+                    # Check for gibberish
+                    if raw_output and detect_gibberish:
+                        is_gibberish, gibberish_score, gibberish_reason = detect_gibberish(raw_output)
+                        if is_gibberish:
+                            logger.warning(f"Gibberish detected with {model_name}: {gibberish_reason}")
+                            # If gibberish is detected and we have more models to try, continue to next model
+                            if enable_fallback and model_name != models_to_try[-1]:
+                                last_error = f"Gibberish detected: {gibberish_reason}"
+                                continue
+                    
                     logger.info(f"Success with model: {model_name}")
                     break
                     
@@ -203,6 +276,9 @@ def process_ocr():
                 "raw_text": raw_output,
                 "markdown_text": markdown_output,
                 "model_used": model_used,
+                "is_gibberish": is_gibberish,
+                "gibberish_score": gibberish_score,
+                "gibberish_reason": gibberish_reason,
                 "success": True
             })
         
@@ -241,5 +317,73 @@ def save_config():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/api/export/pdf', methods=['POST'])
+def export_pdf():
+    """Export markdown text as PDF."""
+    try:
+        data = request.json
+        markdown_text = data.get('markdown_text', '')
+        filename = data.get('filename', 'ocr_result.pdf')
+        
+        if not markdown_text:
+            return jsonify({"error": "No text provided"}), 400
+            
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        
+        # Simple markdown to plain text conversion for now
+        # or just write the markdown as is.
+        # FPDF doesn't support full markdown, so we just write multi_cell.
+        # We replace some common markdown symbols for better readability if needed.
+        
+        pdf.multi_cell(0, 10, markdown_text)
+        
+        pdf_output = io.BytesIO()
+        pdf_output.write(pdf.output())
+        pdf_output.seek(0)
+        
+        return send_file(
+            pdf_output,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=filename
+        )
+    except Exception as e:
+        logger.error(f"Error exporting PDF: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/export/docx', methods=['POST'])
+def export_docx():
+    """Export markdown text as DOCX."""
+    try:
+        data = request.json
+        markdown_text = data.get('markdown_text', '')
+        filename = data.get('filename', 'ocr_result.docx')
+        
+        if not markdown_text:
+            return jsonify({"error": "No text provided"}), 400
+            
+        doc = Document()
+        doc.add_paragraph(markdown_text)
+        
+        docx_output = io.BytesIO()
+        doc.save(docx_output)
+        docx_output.seek(0)
+        
+        return send_file(
+            docx_output,
+            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            as_attachment=True,
+            download_name=filename
+        )
+    except Exception as e:
+        logger.error(f"Error exporting DOCX: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    import os
+    port = int(os.environ.get('PORT', 5001))
+    app.run(debug=True, host='0.0.0.0', port=port)
