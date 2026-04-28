@@ -1011,6 +1011,7 @@
                     <button class="btn btn-ghost btn-sm" id="adjustBtn" aria-expanded="false">Adjust</button>
                     <button class="btn btn-ghost btn-sm" id="advancedBtn" disabled aria-expanded="false">Advanced</button>
                     <button class="btn btn-ghost btn-sm" id="rerunBtn" disabled aria-label="Rerun conditioning">Rerun</button>
+                    <button class="btn btn-ghost btn-sm hidden" id="cancelConditionBtn" aria-label="Cancel conditioning">Cancel</button>
                     <button class="btn btn-primary btn-sm" id="ocrBtn" disabled aria-label="Run OCR">Run OCR</button>
                 </div>
             </div>
@@ -1082,6 +1083,7 @@
             <div class="col-header">
                 <h2 class="col-title"><span class="col-num">3</span>OCR</h2>
                 <div class="col-actions">
+                    <button class="btn btn-ghost btn-sm hidden" id="cancelOcrBtn" aria-label="Cancel OCR">Cancel</button>
                     <div class="segmented-control" id="outputType" role="group" aria-label="Output format">
                         <button class="seg-btn active" data-mode="markdown">Markdown</button>
                         <button class="seg-btn" data-mode="plain">Plain</button>
@@ -1427,6 +1429,7 @@
         const btn = document.getElementById('conditionBtn');
         btn.disabled = true;
         btn.innerHTML = '<span class="loading"></span> Conditioning...';
+        document.getElementById('cancelConditionBtn').classList.remove('hidden');
 
         // Prepare process panel
         const logContainer = document.getElementById('conditionLog');
@@ -1508,6 +1511,7 @@
             conditionController = null;
             btn.disabled = false;
             btn.innerHTML = 'Condition Image';
+            document.getElementById('cancelConditionBtn').classList.add('hidden');
         }
     }
 
@@ -1518,6 +1522,7 @@
         const btn = document.getElementById('ocrBtn');
         btn.disabled = true;
         btn.innerHTML = '<span class="loading"></span>';
+        document.getElementById('cancelOcrBtn').classList.remove('hidden');
 
         // Prepare result panel
         const logContainer = document.getElementById('ocrLog');
@@ -1595,6 +1600,7 @@
             ocrController = null;
             btn.disabled = false;
             btn.innerHTML = 'Run OCR';
+            document.getElementById('cancelOcrBtn').classList.add('hidden');
         }
     }
 
@@ -1621,8 +1627,11 @@
     // ── Export ────────────────────────────────────────────────
     function copyResult() {
         if (!ocrRawText) { showToast('No text to copy', 'error'); return; }
-        navigator.clipboard.writeText(ocrRawText);
-        showToast('Copied to clipboard', 'success');
+        navigator.clipboard.writeText(ocrRawText).then(() => {
+            showToast('Copied to clipboard', 'success');
+        }).catch(() => {
+            showToast('Copy failed. Use browser copy (Ctrl+A, Ctrl+C).', 'error');
+        });
         document.getElementById('exportDropdown').classList.add('hidden');
     }
 
@@ -1821,6 +1830,8 @@
     document.getElementById('conditionBtn').addEventListener('click', () => conditionImage(false));
     document.getElementById('ocrBtn').addEventListener('click', processOCR);
     document.getElementById('rerunBtn').addEventListener('click', () => conditionImage(true));
+    document.getElementById('cancelConditionBtn').addEventListener('click', () => { if (conditionController) conditionController.abort(); });
+    document.getElementById('cancelOcrBtn').addEventListener('click', () => { if (ocrController) ocrController.abort(); });
     document.getElementById('resetBtn').addEventListener('click', resetAll);
     document.getElementById('adjustBtn').addEventListener('click', toggleAdjustDrawer);
     document.getElementById('advancedBtn').addEventListener('click', toggleAdvancedPanel);
@@ -1851,6 +1862,16 @@
             document.getElementById('exportDropdown').classList.add('hidden');
             document.getElementById('exportBtn').setAttribute('aria-expanded', 'false');
         }
+    });
+
+    // Escape key — close overlays and dropdowns
+    document.addEventListener('keydown', e => {
+        if (e.key !== 'Escape') return;
+        document.getElementById('batchReorderOverlay').classList.add('hidden');
+        document.getElementById('apiDropdown').classList.add('hidden');
+        document.getElementById('apiBtn').setAttribute('aria-expanded', 'false');
+        document.getElementById('exportDropdown').classList.add('hidden');
+        document.getElementById('exportBtn').setAttribute('aria-expanded', 'false');
     });
 </script>
 </body>
