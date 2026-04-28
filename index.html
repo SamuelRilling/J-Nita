@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>J-Nita v5.0 - Web-Based OCR Pipeline</title>
+    <title>J-Nita v5.0 OCR Studio</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         :root {
-            /* Foundation: paper + ink, warm-tinted neutrals */
             --paper:        oklch(98%   0.005 85);
             --paper-warm:   oklch(96.5% 0.010 80);
             --surface:      oklch(99%   0.003 85);
@@ -16,24 +16,21 @@
             --hairline:     oklch(89%   0.012 80);
             --hairline-soft:oklch(93%   0.008 80);
 
-            /* Pipeline stages — Full palette, three named roles */
-            --stage-input:       oklch(58%   0.130 215);   /* clear cyan-blue: intake */
+            --stage-input:       oklch(58%   0.130 215);
             --stage-input-tint:  oklch(96.5% 0.022 215);
             --stage-input-edge:  oklch(80%   0.060 215);
 
-            --stage-process:     oklch(64%   0.150 65);    /* warm amber: working */
+            --stage-process:     oklch(64%   0.150 65);
             --stage-process-tint:oklch(96.5% 0.035 75);
             --stage-process-edge:oklch(82%   0.080 70);
 
-            --stage-result:      oklch(52%   0.135 150);   /* forest green: complete */
+            --stage-result:      oklch(52%   0.135 150);
             --stage-result-tint: oklch(96.5% 0.025 150);
             --stage-result-edge: oklch(80%   0.060 150);
 
-            /* Signal — vermilion accent reserved for brand mark, focus, errors */
             --signal:       oklch(60%   0.190 28);
             --signal-tint:  oklch(96%   0.040 28);
 
-            /* Status (semantic) */
             --success:      var(--stage-result);
             --success-tint: var(--stage-result-tint);
             --warning:      oklch(70%   0.160 75);
@@ -43,228 +40,434 @@
 
             --shadow-card:  0 1px 2px oklch(22% 0.02 270 / 0.04), 0 8px 24px oklch(22% 0.02 270 / 0.06);
             --shadow-lift:  0 6px 20px oklch(22% 0.02 270 / 0.10);
+            --shadow-drop:  0 4px 12px oklch(22% 0.02 270 / 0.14);
+
+            --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+            --topbar-h: 48px;
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
         }
 
         body {
-            font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: var(--paper);
-            min-height: 100vh;
-            padding: 24px;
+            font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: var(--ink);
             color: var(--ink);
         }
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            background: var(--surface);
-            border-radius: 20px;
-            box-shadow: var(--shadow-card);
-            overflow: hidden;
-            border: 1px solid var(--hairline);
-        }
-
-        .header {
+        /* ── Topbar ─────────────────────────────────────────── */
+        .topbar {
+            height: var(--topbar-h);
             background: var(--ink);
             color: var(--paper);
-            padding: 34px 40px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 16px;
+            padding: 0 20px;
             position: relative;
+            flex-shrink: 0;
         }
 
-        .header::after {
+        .topbar::after {
             content: "";
             position: absolute;
             left: 0; right: 0; bottom: 0;
-            height: 3px;
+            height: 2px;
             background: linear-gradient(90deg,
-                var(--stage-input) 0%, var(--stage-input) 33.33%,
-                var(--stage-process) 33.33%, var(--stage-process) 66.66%,
-                var(--stage-result) 66.66%, var(--stage-result) 100%);
+                var(--stage-input)   0%       33.33%,
+                var(--stage-process) 33.33%   66.66%,
+                var(--stage-result)  66.66%   100%);
         }
 
-        .header h1 {
-            font-size: 2.1em;
-            margin-bottom: 6px;
+        .topbar-brand {
+            font-size: 1.1em;
+            font-weight: 700;
             letter-spacing: -0.02em;
         }
 
-        .header h1 .mark {
-            color: var(--signal);
-        }
+        .topbar-brand .mark { color: var(--signal); }
 
-        .header p {
-            opacity: 0.78;
-            font-size: 1.05em;
-            max-width: 640px;
-        }
-
-        .header-meta {
+        .topbar-actions {
             display: flex;
-            flex-direction: column;
-            gap: 8px;
-            align-items: flex-end;
+            align-items: center;
+            gap: 12px;
         }
 
         .status-pill {
-            background: oklch(100% 0 0 / 0.08);
-            color: oklch(95% 0.005 85);
-            border: 1px solid oklch(100% 0 0 / 0.16);
-            padding: 6px 14px;
+            font-size: 0.78em;
+            padding: 4px 10px;
             border-radius: 999px;
-            font-size: 0.85em;
+            border: 1px solid oklch(100% 0 0 / 0.18);
+            color: oklch(80% 0.008 270);
             letter-spacing: 0.01em;
         }
 
-        .panel-actions .status-pill {
+        /* ── Pipeline grid ──────────────────────────────────── */
+        #pipeline {
+            display: grid;
+            grid-template-columns: 75% 12.5% 12.5%;
+            height: calc(100vh - var(--topbar-h));
+            transition: grid-template-columns 500ms var(--ease-out);
+        }
+
+        #pipeline[data-active="input"]   { grid-template-columns: 75% 12.5% 12.5%; }
+        #pipeline[data-active="process"] { grid-template-columns: 12.5% 75% 12.5%; }
+        #pipeline[data-active="result"]  { grid-template-columns: 12.5% 12.5% 75%; }
+
+        /* ── Stage columns ──────────────────────────────────── */
+        .stage-col {
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid oklch(22% 0.015 270);
+        }
+
+        .stage-col:last-child { border-right: none; }
+
+        .stage-col[data-stage="input"]   { background: var(--stage-input-tint); }
+        .stage-col[data-stage="process"] { background: var(--stage-process-tint); }
+        .stage-col[data-stage="result"]  { background: var(--stage-result-tint); }
+
+        /* Closed tab — visible only when column is narrow */
+        .col-tab {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 200ms ease;
+            cursor: pointer;
+            z-index: 2;
+        }
+
+        .col-tab-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+        }
+
+        [data-stage="input"]   .col-tab-dot { background: var(--stage-input); }
+        [data-stage="process"] .col-tab-dot { background: var(--stage-process); }
+        [data-stage="result"]  .col-tab-dot { background: var(--stage-result); }
+
+        .col-tab-label {
+            font-size: 0.78em;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+            color: var(--ink-soft);
+        }
+
+        .stage-col.is-closed .col-tab {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .stage-col.is-closed .col-tab:hover { background: oklch(94% 0.010 80 / 0.5); }
+
+        /* Body — hidden when column is closed */
+        .col-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            opacity: 1;
+            pointer-events: auto;
+            transition: opacity 180ms ease;
+            position: relative;
+        }
+
+        .stage-col.is-closed .col-body {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* ── Column header ──────────────────────────────────── */
+        .col-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 16px;
+            gap: 10px;
+            flex-shrink: 0;
+            border-bottom: 1px solid var(--hairline);
+            background: oklch(100% 0 0 / 0.45);
+            flex-wrap: wrap;
+        }
+
+        .col-title {
+            font-size: 0.95em;
+            font-weight: 700;
+            color: var(--ink);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .col-num {
+            display: inline-flex;
+            width: 20px;
+            height: 20px;
+            border-radius: 999px;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75em;
+            font-weight: 800;
+            color: var(--paper);
+        }
+
+        [data-stage="input"]   .col-num { background: var(--stage-input); }
+        [data-stage="process"] .col-num { background: var(--stage-process); }
+        [data-stage="result"]  .col-num { background: var(--stage-result); }
+
+        .col-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        /* ── Col content area ───────────────────────────────── */
+        .col-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* ── Buttons ────────────────────────────────────────── */
+        .btn {
+            padding: 7px 14px;
+            border: 1px solid transparent;
+            border-radius: 7px;
+            font-size: 0.875em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 120ms var(--ease-out),
+                        box-shadow 200ms var(--ease-out),
+                        background-color 150ms ease,
+                        opacity 150ms ease;
+            white-space: nowrap;
+            font-family: inherit;
+        }
+
+        .btn-sm { padding: 5px 10px; font-size: 0.8em; }
+        .btn-xs { padding: 3px 7px; font-size: 0.72em; }
+
+        .btn-primary {
+            background: var(--ink);
+            color: var(--paper);
+            border-color: var(--ink);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-lift);
+        }
+
+        .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        #conditionBtn {
+            background: var(--stage-process);
+            border-color: var(--stage-process);
+            color: oklch(20% 0.04 70);
+            padding: 12px 28px;
+            font-size: 1em;
+            border-radius: 10px;
+        }
+
+        #conditionBtn:hover:not(:disabled) {
+            background: oklch(58% 0.16 65);
+            color: var(--paper);
+        }
+
+        #conditionBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        #ocrBtn {
+            background: var(--stage-result);
+            border-color: var(--stage-result);
+            color: var(--paper);
+        }
+
+        #ocrBtn:hover:not(:disabled) { background: oklch(46% 0.14 150); }
+        #ocrBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .btn-secondary {
+            background: var(--surface);
+            color: var(--ink);
+            border: 1px solid var(--hairline);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
             background: var(--paper-warm);
+            border-color: var(--ink-soft);
+        }
+
+        .btn-ghost {
+            background: transparent;
             color: var(--ink-soft);
             border: 1px solid var(--hairline);
         }
 
-        .image-panel.stage-input .panel-actions .status-pill {
-            background: var(--stage-input-tint);
-            color: var(--stage-input);
-            border-color: var(--stage-input-edge);
-        }
-
-        .image-panel.stage-process .panel-actions .status-pill {
-            background: var(--stage-process-tint);
-            color: oklch(45% 0.10 70);
-            border-color: var(--stage-process-edge);
-        }
-
-        .image-panel.stage-result .panel-actions .status-pill {
-            background: var(--stage-result-tint);
-            color: var(--stage-result);
-            border-color: var(--stage-result-edge);
-        }
-
-        .content {
-            padding: 32px 40px 40px;
-        }
-
-        /* Image Processing Section */
-        .processing-section {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .image-panel {
-            border: 1px solid var(--hairline);
-            border-radius: 14px;
-            padding: 16px 16px 18px;
+        .btn-ghost:hover:not(:disabled) {
             background: var(--paper-warm);
+            color: var(--ink);
+        }
+
+        .btn-ghost:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* ── Upload zone ────────────────────────────────────── */
+        .upload-zone {
+            flex: 1;
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            position: relative;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            border: 2px dashed var(--stage-input-edge);
+            border-radius: 12px;
+            margin: 14px;
+            padding: 40px 24px;
+            cursor: pointer;
+            text-align: center;
+            transition: background 200ms var(--ease-out), border-color 200ms var(--ease-out);
+            background: oklch(97.5% 0.018 215);
         }
 
-        .image-panel.stage-input    { background: var(--stage-input-tint);    border-color: var(--stage-input-edge); }
-        .image-panel.stage-process  { background: var(--stage-process-tint);  border-color: var(--stage-process-edge); }
-        .image-panel.stage-result   { background: var(--stage-result-tint);   border-color: var(--stage-result-edge); }
+        .upload-zone:hover, .upload-zone.dragover {
+            background: oklch(94% 0.032 215);
+            border-color: var(--stage-input);
+        }
 
-        .image-panel h3 {
-            margin-bottom: 0;
-            color: var(--ink);
-            text-align: left;
+        .upload-icon {
+            font-size: 2.4em;
+            color: var(--stage-input);
+            line-height: 1;
+        }
+
+        .upload-zone h3 {
             font-size: 1.05em;
             font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            color: var(--ink);
         }
 
-        .image-panel h3::before {
-            content: "";
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 999px;
-            background: var(--muted);
-            box-shadow: 0 0 0 3px oklch(100% 0 0 / 0.6);
+        .upload-zone p {
+            font-size: 0.88em;
+            color: var(--ink-soft);
         }
 
-        .image-panel.stage-input   h3::before { background: var(--stage-input); }
-        .image-panel.stage-process h3::before { background: var(--stage-process); }
-        .image-panel.stage-result  h3::before { background: var(--stage-result); }
-
-        .panel-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
+        .upload-zone .file-types {
+            font-size: 0.78em;
+            color: var(--muted);
         }
 
-        .panel-actions {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .canvas-container {
-            width: 100%;
-            height: 400px;
-            border: 1px dashed var(--hairline);
-            border-radius: 12px;
+        /* ── Input canvas wrapper ───────────────────────────── */
+        .input-canvas-wrapper {
+            flex: 1;
+            position: relative;
             display: flex;
             align-items: center;
             justify-content: center;
+            overflow: hidden;
+            margin: 0;
             background: var(--surface);
+        }
+
+        .input-canvas-wrapper canvas {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+
+        /* Condition button overlay — floats over the uploaded image */
+        .condition-btn-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+
+        .condition-btn-overlay.has-image { pointer-events: auto; }
+
+        .condition-btn-overlay #conditionBtn {
+            opacity: 0.55;
+            transform: scale(1);
+            transition: opacity 150ms ease, transform 150ms ease,
+                        background-color 150ms ease, color 150ms ease;
+            box-shadow: var(--shadow-drop);
+        }
+
+        .condition-btn-overlay #conditionBtn:hover:not(:disabled) {
+            opacity: 1;
+            transform: scale(1.06);
+        }
+
+        /* ── Canvas container (process panel) ───────────────── */
+        .canvas-container {
+            flex: 1;
             position: relative;
             overflow: hidden;
+            min-height: 0;
+            background: var(--surface);
         }
 
         .canvas-container canvas {
             max-width: 100%;
             max-height: 100%;
             object-fit: contain;
+            display: block;
         }
 
-        .canvas-container .placeholder {
+        .canvas-placeholder {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             color: var(--muted);
+            font-size: 0.92em;
             text-align: center;
             padding: 20px;
-            font-size: 0.95em;
         }
 
+        /* ── Progress overlay ───────────────────────────────── */
         .progress-overlay {
             position: absolute;
             inset: 0;
             background: oklch(99% 0.005 85 / 0.94);
             display: none;
-            align-items: center;
+            align-items: flex-start;
             justify-content: center;
-            padding: 18px;
-            text-align: left;
-            color: var(--ink);
+            padding: 16px;
             backdrop-filter: blur(6px);
+            z-index: 4;
+            overflow-y: auto;
         }
 
-        .progress-overlay.active {
-            display: flex;
-        }
+        .progress-overlay.active { display: flex; }
 
         .progress-log {
             width: 100%;
-            max-height: 320px;
-            overflow-y: auto;
-            font-size: 0.9em;
+            max-width: 520px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 8px;
         }
 
         .progress-line {
@@ -275,6 +478,7 @@
             border-radius: 8px;
             background: var(--surface);
             border: 1px solid var(--hairline);
+            font-size: 0.88em;
             box-shadow: var(--shadow-card);
         }
 
@@ -290,142 +494,175 @@
             color: oklch(40% 0.16 28);
         }
 
-        .progress-icon {
-            font-size: 0.95em;
+        .progress-icon { font-size: 0.95em; }
+        .progress-message { flex: 1; }
+
+        /* Cancel button inside overlay */
+        .overlay-cancel {
+            margin-top: 12px;
+            align-self: center;
         }
 
-        .progress-message {
-            flex: 1;
-        }
-
-        .upload-area {
-            border: 2px dashed var(--stage-input-edge);
-            border-radius: 16px;
-            padding: 34px;
-            text-align: center;
-            cursor: pointer;
-            transition: background-color 200ms cubic-bezier(0.22, 1, 0.36, 1),
-                        border-color 200ms cubic-bezier(0.22, 1, 0.36, 1);
-            background: var(--stage-input-tint);
-            color: var(--ink);
-            margin-bottom: 24px;
-        }
-
-        .upload-area:hover {
-            background: oklch(94% 0.030 215);
-            border-color: var(--stage-input);
-        }
-
-        .upload-area.dragover {
-            background: oklch(91% 0.045 215);
-            border-color: var(--stage-input);
-        }
-
-        .upload-area h3 { color: var(--ink); }
-        .upload-area p  { color: var(--ink-soft); }
-        .upload-area .file-types { color: var(--muted); }
-
-        .btn {
-            padding: 11px 22px;
-            border: 1px solid transparent;
-            border-radius: 8px;
-            font-size: 0.95em;
-            font-weight: 600;
-            letter-spacing: 0.01em;
-            cursor: pointer;
-            transition: transform 120ms cubic-bezier(0.22, 1, 0.36, 1),
-                        box-shadow 200ms cubic-bezier(0.22, 1, 0.36, 1),
-                        background-color 200ms cubic-bezier(0.22, 1, 0.36, 1),
-                        opacity 150ms ease;
-            margin: 5px;
-        }
-
-        .btn-primary {
-            background: var(--ink);
-            color: var(--paper);
-            border-color: var(--ink);
-        }
-
-        .btn-primary:hover:not(:disabled) {
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-lift);
-        }
-
-        .btn-primary:disabled {
-            opacity: 0.45;
-            cursor: not-allowed;
-        }
-
-        /* Stage-aware primary buttons: each pipeline action wears its stage color */
-        #conditionBtn {
-            background: var(--stage-process);
-            border-color: var(--stage-process);
-            color: oklch(20% 0.04 70);
-        }
-        #conditionBtn:hover:not(:disabled) {
-            background: oklch(58% 0.16 65);
-            color: var(--paper);
-        }
-
-        #ocrBtn {
-            background: var(--stage-result);
-            border-color: var(--stage-result);
-            color: var(--paper);
-        }
-        #ocrBtn:hover:not(:disabled) {
-            background: oklch(46% 0.14 150);
-        }
-
-        .btn-secondary {
-            background: var(--surface);
-            color: var(--ink);
-            border: 1px solid var(--hairline);
-        }
-
-        .btn-secondary:hover {
-            background: var(--paper-warm);
-            border-color: var(--ink-soft);
-        }
-
-        .btn-ghost {
-            background: transparent;
-            color: var(--ink-soft);
-            border: 1px solid var(--hairline);
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-weight: 600;
-        }
-
-        .btn-ghost:hover:not(:disabled) {
-            background: var(--paper-warm);
-            color: var(--ink);
-        }
-
-        .btn-ghost:disabled {
-            opacity: 0.45;
-            cursor: not-allowed;
-        }
-
-        .text-output {
-            min-height: 400px;
-            max-height: 600px;
-            overflow-y: auto;
-            border: 1px solid var(--stage-result-edge);
-            border-radius: 12px;
-            padding: 16px;
-            background: var(--surface);
-            font-family: 'JetBrains Mono', 'Courier New', monospace;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            position: relative;
-        }
-
-        .text-content.empty {
+        /* ── Stage-complete overlay ──────────────────────────── */
+        .stage-complete-overlay {
+            position: absolute;
+            inset: 0;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
+            gap: 20px;
+            background: oklch(97% 0.020 150 / 0.96);
+            z-index: 8;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 250ms ease;
+        }
+
+        [data-stage="input"]   .stage-complete-overlay { background: oklch(97% 0.018 215 / 0.96); }
+        [data-stage="process"] .stage-complete-overlay { background: oklch(97% 0.028 75  / 0.96); }
+        [data-stage="result"]  .stage-complete-overlay { background: oklch(97% 0.020 150 / 0.96); }
+
+        .stage-col.showing-complete-banner .stage-complete-overlay,
+        .stage-col.showing-complete-check  .stage-complete-overlay {
+            opacity: 1;
+        }
+
+        .stage-complete-banner {
+            font-size: 1.6em;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: var(--stage-result);
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 280ms ease, transform 280ms var(--ease-out);
+        }
+
+        [data-stage="input"]   .stage-complete-banner { color: var(--stage-input); }
+        [data-stage="process"] .stage-complete-banner { color: var(--stage-process); }
+        [data-stage="result"]  .stage-complete-banner { color: var(--stage-result); }
+
+        .stage-col.showing-complete-banner .stage-complete-banner {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .stage-complete-check {
+            font-size: 5em;
+            line-height: 1;
+            color: var(--stage-result);
+            opacity: 0;
+            transform: scale(0.2);
+            transition: opacity 300ms ease, transform 300ms var(--ease-out);
+        }
+
+        [data-stage="input"]   .stage-complete-check { color: var(--stage-input); }
+        [data-stage="process"] .stage-complete-check { color: var(--stage-process); }
+        [data-stage="result"]  .stage-complete-check { color: var(--stage-result); }
+
+        .stage-col.showing-complete-check .stage-complete-check {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* ── Adjust drawer ──────────────────────────────────── */
+        .adjust-drawer {
+            flex-shrink: 0;
+            display: none;
+            flex-direction: column;
+            gap: 14px;
+            padding: 14px 16px;
+            border-top: 1px solid var(--stage-process-edge);
+            background: oklch(97% 0.030 75 / 0.7);
+        }
+
+        .adjust-drawer.open { display: flex; }
+
+        .range-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .range-row input[type="range"] {
+            flex: 1;
+            accent-color: var(--stage-process);
+        }
+
+        .range-value {
+            font-weight: 700;
+            color: var(--stage-process);
+            font-variant-numeric: tabular-nums;
+            min-width: 24px;
+            text-align: right;
+            font-size: 0.9em;
+        }
+
+        .drawer-label {
+            font-size: 0.82em;
+            font-weight: 600;
+            color: var(--ink-soft);
+            letter-spacing: 0.01em;
+        }
+
+        .drawer-desc {
+            font-size: 0.78em;
             color: var(--muted);
-            font-style: italic;
+            margin-top: 2px;
+        }
+
+        /* ── Advanced panel ─────────────────────────────────── */
+        .advanced-panel {
+            display: none;
+            padding: 12px;
+            border-top: 1px solid var(--stage-process-edge);
+            background: var(--surface);
+            overflow-y: auto;
+            flex-shrink: 0;
+            max-height: 220px;
+        }
+
+        .advanced-panel.open { display: block; }
+
+        .advanced-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        .advanced-card {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .advanced-card h4 {
+            font-size: 0.72em;
+            color: var(--muted);
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .advanced-canvas {
+            width: 100%;
+            height: 100px;
+            border-radius: 6px;
+            border: 1px solid var(--hairline);
+            background: var(--paper-warm);
+        }
+
+        /* ── Text output (result panel) ─────────────────────── */
+        .text-output {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            position: relative;
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            font-size: 0.88em;
+            line-height: 1.65;
+            background: var(--surface);
+            border-top: 1px solid var(--stage-result-edge);
         }
 
         .text-content {
@@ -434,935 +671,1187 @@
             color: var(--ink);
         }
 
+        .text-content.empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 120px;
+            color: var(--muted);
+            font-style: italic;
+            white-space: normal;
+        }
+
+        .text-content.preview-mode {
+            white-space: normal;
+            font-family: "Inter", sans-serif;
+            font-size: 1em;
+        }
+
+        /* ── Segmented control ──────────────────────────────── */
+        .segmented-control {
+            display: flex;
+            border: 1px solid var(--hairline);
+            border-radius: 7px;
+            overflow: hidden;
+            background: var(--surface);
+        }
+
+        .seg-btn {
+            padding: 5px 10px;
+            font-size: 0.78em;
+            font-weight: 600;
+            border: none;
+            background: transparent;
+            color: var(--ink-soft);
+            cursor: pointer;
+            transition: background 150ms ease, color 150ms ease;
+            font-family: inherit;
+            border-right: 1px solid var(--hairline);
+        }
+
+        .seg-btn:last-child { border-right: none; }
+
+        .seg-btn.active {
+            background: var(--stage-result);
+            color: var(--paper);
+        }
+
+        .seg-btn:hover:not(.active) {
+            background: var(--paper-warm);
+            color: var(--ink);
+        }
+
+        /* ── Inline dropdowns ───────────────────────────────── */
+        .dropdown-anchor {
+            position: relative;
+        }
+
+        .inline-dropdown {
+            position: absolute;
+            top: calc(100% + 6px);
+            right: 0;
+            background: var(--surface);
+            border: 1px solid var(--hairline);
+            border-radius: 10px;
+            box-shadow: var(--shadow-drop);
+            z-index: 20;
+            min-width: 220px;
+            overflow: hidden;
+        }
+
+        .inline-dropdown.hidden { display: none; }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            font-size: 0.875em;
+            color: var(--ink);
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            width: 100%;
+            text-align: left;
+            transition: background 120ms ease;
+            border-bottom: 1px solid var(--hairline-soft);
+            font-family: inherit;
+            font-weight: 500;
+        }
+
+        .dropdown-item:last-child { border-bottom: none; }
+        .dropdown-item:hover { background: var(--paper-warm); }
+
+        /* API model list */
+        .api-model-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 14px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--hairline-soft);
+            transition: background 120ms ease;
+            font-size: 0.85em;
+        }
+
+        .api-model-item:last-child { border-bottom: none; }
+        .api-model-item:hover { background: var(--paper-warm); }
+
+        .api-model-item.is-selected { background: var(--stage-result-tint); }
+
+        .model-status-icon {
+            font-size: 0.9em;
+            font-weight: 800;
+            width: 16px;
+            text-align: center;
+        }
+
+        .model-status-success { color: var(--stage-result); }
+        .model-status-failed  { color: var(--signal); }
+        .model-status-untested { color: var(--muted); }
+        .model-status-testing { color: var(--stage-process); }
+
+        .model-name { flex: 1; }
+
+        .api-dropdown-footer {
+            padding: 8px 14px;
+            border-top: 1px solid var(--hairline);
+            background: var(--paper-warm);
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        /* ── Batch reorder mockup ────────────────────────────── */
+        .panel-overlay {
+            position: absolute;
+            inset: 0;
+            background: var(--surface);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-overlay-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--hairline);
+            background: var(--paper-warm);
+            font-weight: 700;
+            font-size: 0.92em;
+        }
+
+        .coming-soon-badge {
+            font-size: 0.72em;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: var(--warning-tint);
+            color: oklch(38% 0.12 75);
+            border: 1px solid oklch(82% 0.10 75);
+            font-weight: 600;
+        }
+
+        .panel-overlay-header .close-btn { margin-left: auto; }
+
+        .batch-reorder-cards {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 16px;
+            overflow-y: auto;
+        }
+
+        .batch-card {
+            padding: 14px 16px;
+            border: 1px solid var(--hairline);
+            border-radius: 8px;
+            background: var(--paper-warm);
+            font-size: 0.88em;
+            color: var(--ink-soft);
+            cursor: grab;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .batch-card::before {
+            content: "⠿";
+            color: var(--muted);
+            font-size: 1.1em;
+        }
+
+        /* ── Loading spinner ─────────────────────────────────── */
         .loading {
             display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid var(--hairline-soft);
-            border-top: 3px solid var(--signal);
+            width: 14px;
+            height: 14px;
+            border: 2px solid var(--hairline-soft);
+            border-top-color: var(--signal);
             border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-right: 10px;
+            animation: spin 0.8s linear infinite;
+            vertical-align: middle;
+            margin-right: 5px;
         }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Toast notifications ─────────────────────────────── */
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
         }
 
-        .alert {
-            padding: 15px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-            display: none;
+        .toast {
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 0.875em;
+            font-weight: 500;
+            box-shadow: var(--shadow-drop);
+            pointer-events: auto;
+            animation: toastIn 220ms var(--ease-out);
+            max-width: 320px;
         }
 
-        .alert.success {
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .toast.success {
             background: var(--success-tint);
             color: oklch(32% 0.10 150);
             border: 1px solid var(--stage-result-edge);
         }
 
-        .alert.error {
+        .toast.error {
             background: var(--error-tint);
             color: oklch(38% 0.16 28);
             border: 1px solid oklch(82% 0.08 28);
         }
 
-        .alert.info {
+        .toast.info {
             background: var(--stage-input-tint);
             color: oklch(38% 0.10 215);
             border: 1px solid var(--stage-input-edge);
         }
 
-        .alert.warning {
-            background: var(--warning-tint);
-            color: oklch(38% 0.12 75);
-            border: 1px solid oklch(82% 0.10 75);
-        }
-
-        .description {
-            font-size: 0.9em;
-            color: var(--muted);
-            margin-bottom: 8px;
-        }
-
-        /* Configuration Section */
-        .section {
-            margin-bottom: 20px;
-            border: 1px solid var(--hairline);
-            border-radius: 14px;
-            overflow: hidden;
-            background: var(--surface);
-        }
-
-        .section-header {
-            background: var(--paper-warm);
-            padding: 16px 20px;
-            font-size: 1.05em;
-            font-weight: 700;
-            color: var(--ink);
-            border-bottom: 1px solid var(--hairline);
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: background-color 150ms ease;
-        }
-
-        .section-header:hover {
-            background: oklch(94% 0.012 75);
-        }
-
-        .section-content {
-            padding: 20px;
-            display: none;
-        }
-
-        .section-content.active {
-            display: block;
-        }
-
-        .form-group {
-            margin-bottom: 15px;
-        }
-
+        /* ── Form elements ───────────────────────────────────── */
         .form-group label {
             display: block;
-            margin-bottom: 6px;
+            font-size: 0.82em;
             font-weight: 600;
             color: var(--ink-soft);
-            font-size: 0.92em;
-            letter-spacing: 0.01em;
+            margin-bottom: 4px;
         }
 
-        .form-group input[type="text"],
-        .form-group input[type="number"],
-        .form-group select {
-            width: 100%;
-            padding: 9px 10px;
-            border: 1px solid var(--hairline);
-            border-radius: 6px;
-            font-size: 0.95em;
-            background: var(--surface);
-            color: var(--ink);
-            transition: border-color 150ms ease, box-shadow 150ms ease;
-        }
-
-        .form-group input[type="text"]:focus,
-        .form-group input[type="number"]:focus,
-        .form-group select:focus {
-            outline: none;
-            border-color: var(--signal);
-            box-shadow: 0 0 0 3px var(--signal-tint);
-        }
-
-        .form-group input[type="range"] {
-            width: 100%;
-            accent-color: var(--signal);
-        }
-
-        .range-value {
-            display: inline-block;
-            margin-left: 10px;
-            font-weight: 700;
-            color: var(--signal);
-            font-variant-numeric: tabular-nums;
-        }
-
-        .model-selector {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .model-card {
-            border: 1px solid var(--hairline);
-            border-radius: 10px;
-            padding: 12px;
-            cursor: pointer;
-            transition: border-color 150ms ease, background-color 150ms ease, transform 150ms ease;
-            background: var(--surface);
-            color: var(--ink);
-        }
-
-        .model-card:hover {
-            border-color: var(--ink-soft);
-            transform: translateY(-1px);
-        }
-
-        .model-card.selected {
-            border-color: var(--stage-result);
-            background: var(--stage-result-tint);
-            color: oklch(35% 0.10 150);
-        }
-
-        .model-card.primary {
-            border-color: var(--stage-process);
-            background: var(--stage-process-tint);
-            color: oklch(35% 0.10 70);
-        }
-
-        .actions {
-            text-align: center;
-            margin-top: 10px;
-        }
-
-        .advanced-panel {
-            margin-top: 16px;
-            padding: 14px;
-            border-radius: 12px;
-            background: var(--surface);
-            border: 1px solid var(--hairline);
-            display: none;
-        }
-
-        .advanced-panel.active {
-            display: block;
-        }
-
-        .advanced-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 12px;
-        }
-
-        .advanced-card {
-            border: 1px solid var(--hairline);
-            border-radius: 10px;
-            padding: 10px;
-            background: var(--paper);
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .advanced-card h4 {
-            font-size: 0.85em;
-            color: var(--muted);
-            font-weight: 600;
-            letter-spacing: 0.02em;
-            text-transform: uppercase;
-        }
-
-        .advanced-canvas {
-            width: 100%;
-            height: 140px;
-            border-radius: 8px;
-            border: 1px solid var(--hairline);
-            background: var(--paper-warm);
-        }
-
-        @media (max-width: 1200px) {
-            .processing-section {
-                grid-template-columns: 1fr;
-            }
-        }
+        /* ── Misc ────────────────────────────────────────────── */
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <div>
-                <h1><span class="mark">J-Nita</span> v5.0 OCR Studio</h1>
-                <p>Photograph a page, condition it, extract clean Markdown. Three deliberate stages — each shows its work.</p>
-            </div>
-            <div class="header-meta">
-                <span class="status-pill">Backend: j-nita.onrender.com</span>
-                <span class="status-pill">Pipeline: Input → Process → Result</span>
-            </div>
+
+<div class="topbar">
+    <div class="topbar-brand"><span class="mark">J-Nita</span> v5.0</div>
+    <div class="topbar-actions">
+        <span class="status-pill" id="backendStatus">j-nita.onrender.com</span>
+        <button class="btn btn-ghost btn-sm" id="resetBtn">Reset</button>
+    </div>
+</div>
+
+<div id="pipeline" data-active="input">
+
+    <!-- ── Input Column ─────────────────────────────────────── -->
+    <div class="stage-col" id="col-input" data-stage="input">
+        <div class="col-tab" id="tab-input" role="button" tabindex="0" aria-label="Open Input stage">
+            <span class="col-tab-dot"></span>
+            <span class="col-tab-label">Input</span>
         </div>
-
-        <div class="content">
-            <div class="alert success" id="successAlert"></div>
-            <div class="alert error" id="errorAlert"></div>
-            <div class="alert info" id="infoAlert"></div>
-
-            <!-- Image Upload -->
-            <div class="upload-area" id="uploadArea">
-                <input type="file" id="fileInput" accept="image/*" style="display: none;">
-                <h3>Upload an image to begin</h3>
-                <p>Drag and drop, or click to select a file for conditioning and OCR.</p>
-                <p class="file-types" style="font-size: 0.9em;">Supports PNG, JPG, JPEG, BMP, TIFF, WEBP</p>
+        <div class="col-body">
+            <div class="col-header">
+                <h2 class="col-title"><span class="col-num">1</span>Input</h2>
+                <div class="col-actions">
+                    <button class="btn btn-ghost btn-sm" id="reorderBtn" aria-label="Reorder files">Reorder</button>
+                </div>
             </div>
-
-            <!-- Processing Section -->
-            <div class="processing-section">
-                <!-- Original Image -->
-                <div class="image-panel stage-input">
-                    <div class="panel-header">
-                        <h3>Original Image</h3>
-                        <div class="panel-actions">
-                            <span class="status-pill">Input</span>
-                        </div>
-                    </div>
-                    <div class="canvas-container">
-                        <canvas id="originalCanvas"></canvas>
-                        <div class="placeholder" id="originalPlaceholder">No image uploaded</div>
-                    </div>
+            <div class="col-content" id="inputContent">
+                <input type="file" id="fileInput" accept="image/*" style="display:none" aria-label="Upload image file">
+                <div class="upload-zone" id="uploadArea" role="button" tabindex="0" aria-label="Upload image">
+                    <p class="upload-icon">↑</p>
+                    <h3>Drop or click to upload</h3>
+                    <p>Drag and drop an image to begin</p>
+                    <p class="file-types">PNG, JPG, JPEG, BMP, TIFF, WEBP</p>
                 </div>
-
-                <!-- Conditioned Image -->
-                <div class="image-panel stage-process">
-                    <div class="panel-header">
-                        <h3>Conditioned Image</h3>
-                        <div class="panel-actions">
-                            <span class="status-pill">Processing</span>
-                            <button class="btn btn-ghost" id="advancedToggle" disabled>Advanced</button>
-                        </div>
-                    </div>
-                    <div class="canvas-container">
-                        <canvas id="conditionedCanvas"></canvas>
-                        <div class="placeholder" id="conditionedPlaceholder">Will appear after conditioning</div>
-                        <div class="progress-overlay" id="conditionOverlay">
-                            <div class="progress-log" id="conditionLog"></div>
-                        </div>
-                    </div>
-                    <div class="advanced-panel" id="advancedPanel">
-                        <div class="advanced-grid">
-                            <div class="advanced-card">
-                                <h4>Corner Detection</h4>
-                                <canvas id="boundingCanvas" class="advanced-canvas"></canvas>
-                            </div>
-                            <div class="advanced-card">
-                                <h4>Smart Crop</h4>
-                                <canvas id="cropCanvas" class="advanced-canvas"></canvas>
-                            </div>
-                            <div class="advanced-card">
-                                <h4>Filter Pass</h4>
-                                <canvas id="filterCanvas" class="advanced-canvas"></canvas>
-                            </div>
-                            <div class="advanced-card">
-                                <h4>Final Conditioned</h4>
-                                <canvas id="finalCanvas" class="advanced-canvas"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- OCR Results -->
-                <div class="image-panel stage-result">
-                    <div class="panel-header">
-                        <h3>OCR Results</h3>
-                        <div class="panel-actions">
-                            <span class="status-pill">Markdown</span>
-                        </div>
-                    </div>
-                    <div class="text-output" id="textOutput">
-                        <div class="text-content empty" id="textContent">Text will appear here after OCR processing</div>
-                        <div class="progress-overlay" id="ocrOverlay">
-                            <div class="progress-log" id="ocrLog"></div>
-                        </div>
+                <div class="input-canvas-wrapper hidden" id="inputCanvasWrapper">
+                    <canvas id="originalCanvas"></canvas>
+                    <div class="condition-btn-overlay" id="conditionBtnOverlay">
+                        <button class="btn" id="conditionBtn" aria-label="Condition image">Condition Image</button>
                     </div>
                 </div>
             </div>
-
-            <!-- Action Buttons -->
-            <div class="actions">
-                <button class="btn btn-primary" id="conditionBtn" disabled>🖼️ Condition Image</button>
-                <button class="btn btn-primary" id="ocrBtn" disabled>🔍 Run OCR</button>
-                <button class="btn btn-secondary" id="resetBtn">🔄 Reset</button>
+            <!-- Batch reorder mockup -->
+            <div class="panel-overlay hidden" id="batchReorderOverlay">
+                <div class="panel-overlay-header">
+                    <span>File Order</span>
+                    <span class="coming-soon-badge">Coming soon</span>
+                    <button class="btn btn-ghost btn-sm close-btn" onclick="document.getElementById('batchReorderOverlay').classList.add('hidden')">Close</button>
+                </div>
+                <div class="batch-reorder-cards">
+                    <div class="batch-card">Document_001.jpg</div>
+                    <div class="batch-card">Document_002.jpg</div>
+                    <div class="batch-card">Document_003.jpg</div>
+                </div>
             </div>
-
-            <!-- Configuration Section -->
-            <div class="section">
-                <div class="section-header" onclick="toggleSection(this)">
-                    <span>⚙️ OCR Configuration</span>
-                    <span>▼</span>
-                </div>
-                <div class="section-content" id="configSection">
-                    <!-- OCR Model Selection -->
-                    <div class="form-group">
-                        <label>Primary OCR Model</label>
-                        <select id="ocr_model">
-                            <option value="Nanonets-OCR2-3B">Nanonets-OCR2-3B (High Quality)</option>
-                            <option value="Chandra-OCR">Chandra-OCR (Medium Quality)</option>
-                            <option value="Dots.OCR">Dots.OCR (Medium Quality)</option>
-                            <option value="olmOCR-2-7B-1025">olmOCR-2-7B-1025 (High Quality, Slow)</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Fallback Models</label>
-                        <div class="model-selector" id="fallbackModels">
-                            <div class="model-card" data-model="Nanonets-OCR2-3B">Nanonets-OCR2-3B</div>
-                            <div class="model-card" data-model="Chandra-OCR">Chandra-OCR</div>
-                            <div class="model-card" data-model="Dots.OCR">Dots.OCR</div>
-                            <div class="model-card" data-model="olmOCR-2-7B-1025">olmOCR-2-7B-1025</div>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Conditioning Strength</label>
-                        <input type="range" id="strength" min="0" max="100" value="10" oninput="updateRangeValue(this)">
-                        <span class="range-value" id="strength_value">10</span>
-                    </div>
-
-                    <div class="form-group">
-                        <label>PNG Compression</label>
-                        <input type="range" id="png_compression" min="0" max="9" value="0" oninput="updateRangeValue(this)">
-                        <span class="range-value" id="png_compression_value">0</span>
-                    </div>
-                </div>
+            <!-- Stage complete -->
+            <div class="stage-complete-overlay" id="scOverlay-input">
+                <div class="stage-complete-banner">Stage complete!</div>
+                <div class="stage-complete-check">✓</div>
             </div>
         </div>
     </div>
 
-    <script>
-        const API_BASE = 'https://j-nita.onrender.com';
-        let currentImage = null;
-        let conditionedImage = null;
-        let originalImageElement = null;
-        let conditionedImageElement = null;
-        let backendWarmed = false;
+    <!-- ── Process Column ───────────────────────────────────── -->
+    <div class="stage-col is-closed" id="col-process" data-stage="process">
+        <div class="col-tab" id="tab-process" role="button" tabindex="-1" aria-label="Open Condition stage">
+            <span class="col-tab-dot"></span>
+            <span class="col-tab-label">Condition</span>
+        </div>
+        <div class="col-body">
+            <div class="col-header">
+                <h2 class="col-title"><span class="col-num">2</span>Condition</h2>
+                <div class="col-actions">
+                    <button class="btn btn-ghost btn-sm" id="adjustBtn" aria-expanded="false">Adjust</button>
+                    <button class="btn btn-ghost btn-sm" id="advancedBtn" disabled aria-expanded="false">Advanced</button>
+                    <button class="btn btn-ghost btn-sm" id="rerunBtn" disabled aria-label="Rerun conditioning">Rerun</button>
+                    <button class="btn btn-primary btn-sm" id="ocrBtn" disabled aria-label="Run OCR">Run OCR</button>
+                </div>
+            </div>
+            <div class="col-content">
+                <div class="canvas-container" id="processCanvasContainer">
+                    <canvas id="conditionedCanvas" style="display:none"></canvas>
+                    <div class="canvas-placeholder" id="conditionedPlaceholder">Run conditioning to see result</div>
+                    <div class="progress-overlay" id="conditionOverlay" role="status" aria-live="polite">
+                        <div class="progress-log" id="conditionLog"></div>
+                    </div>
+                </div>
+                <div class="advanced-panel" id="advancedPanel" aria-hidden="true">
+                    <div class="advanced-grid">
+                        <div class="advanced-card">
+                            <h4>Corner Detection</h4>
+                            <canvas id="boundingCanvas" class="advanced-canvas"></canvas>
+                        </div>
+                        <div class="advanced-card">
+                            <h4>Smart Crop</h4>
+                            <canvas id="cropCanvas" class="advanced-canvas"></canvas>
+                        </div>
+                        <div class="advanced-card">
+                            <h4>Filter Pass</h4>
+                            <canvas id="filterCanvas" class="advanced-canvas"></canvas>
+                        </div>
+                        <div class="advanced-card">
+                            <h4>Final Conditioned</h4>
+                            <canvas id="finalCanvas" class="advanced-canvas"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="adjust-drawer" id="adjustDrawer" aria-hidden="true">
+                    <div>
+                        <div class="drawer-label">Conditioning Strength</div>
+                        <div class="drawer-desc">Higher values apply stronger denoising. Most images work best at 5-20.</div>
+                        <div class="range-row">
+                            <input type="range" id="strength" min="0" max="100" value="10"
+                                aria-label="Conditioning strength"
+                                oninput="updateRangeValue(this)">
+                            <span class="range-value" id="strength_value">10</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="drawer-label">PNG Compression</div>
+                        <div class="drawer-desc">0 = no compression (faster). 9 = maximum compression (smaller file).</div>
+                        <div class="range-row">
+                            <input type="range" id="png_compression" min="0" max="9" value="0"
+                                aria-label="PNG compression level"
+                                oninput="updateRangeValue(this)">
+                            <span class="range-value" id="png_compression_value">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="stage-complete-overlay" id="scOverlay-process">
+                <div class="stage-complete-banner">Stage complete!</div>
+                <div class="stage-complete-check">✓</div>
+            </div>
+        </div>
+    </div>
 
-        // Initialize
-        document.getElementById('fileInput').addEventListener('change', handleFileSelect);
-        document.getElementById('uploadArea').addEventListener('click', () => document.getElementById('fileInput').click());
-        document.getElementById('uploadArea').addEventListener('dragover', handleDragOver);
-        document.getElementById('uploadArea').addEventListener('drop', handleDrop);
-        document.getElementById('conditionBtn').addEventListener('click', conditionImage);
-        document.getElementById('ocrBtn').addEventListener('click', processOCR);
-        document.getElementById('resetBtn').addEventListener('click', resetAll);
-        document.getElementById('advancedToggle').addEventListener('click', toggleAdvancedPanel);
+    <!-- ── Result Column ────────────────────────────────────── -->
+    <div class="stage-col is-closed" id="col-result" data-stage="result">
+        <div class="col-tab" id="tab-result" role="button" tabindex="-1" aria-label="Open OCR Result stage">
+            <span class="col-tab-dot"></span>
+            <span class="col-tab-label">Result</span>
+        </div>
+        <div class="col-body">
+            <div class="col-header">
+                <h2 class="col-title"><span class="col-num">3</span>OCR</h2>
+                <div class="col-actions">
+                    <div class="segmented-control" id="outputType" role="group" aria-label="Output format">
+                        <button class="seg-btn active" data-mode="markdown">Markdown</button>
+                        <button class="seg-btn" data-mode="plain">Plain</button>
+                        <button class="seg-btn" data-mode="preview">Preview</button>
+                    </div>
+                    <div class="dropdown-anchor">
+                        <button class="btn btn-ghost btn-sm" id="apiBtn" aria-expanded="false" aria-haspopup="true">API</button>
+                        <div class="inline-dropdown hidden" id="apiDropdown" role="menu">
+                            <div id="apiModelList"></div>
+                        </div>
+                    </div>
+                    <div class="dropdown-anchor">
+                        <button class="btn btn-secondary btn-sm" id="exportBtn" aria-expanded="false" aria-haspopup="true">Export</button>
+                        <div class="inline-dropdown hidden" id="exportDropdown" role="menu">
+                            <button class="dropdown-item" onclick="copyResult()">Copy to clipboard</button>
+                            <button class="dropdown-item" onclick="downloadResult('md')">Download .md</button>
+                            <button class="dropdown-item" onclick="downloadResult('pdf')">Download .pdf</button>
+                            <button class="dropdown-item" onclick="downloadResult('docx')">Download .docx</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-content">
+                <div class="text-output" id="textOutput">
+                    <div class="text-content empty" id="textContent">OCR results will appear here</div>
+                    <div class="progress-overlay" id="ocrOverlay" role="status" aria-live="polite">
+                        <div class="progress-log" id="ocrLog"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="stage-complete-overlay" id="scOverlay-result">
+                <div class="stage-complete-banner">Stage complete!</div>
+                <div class="stage-complete-check">✓</div>
+            </div>
+        </div>
+    </div>
 
-        // Model card selection
-        document.querySelectorAll('.model-card').forEach(card => {
-            card.addEventListener('click', function() {
-                const primaryModel = document.getElementById('ocr_model').value;
-                if (this.dataset.model !== primaryModel) {
-                    this.classList.toggle('selected');
+</div><!-- #pipeline -->
+
+<div class="toast-container" id="toastContainer" aria-live="assertive"></div>
+
+<script>
+    const API_BASE = 'https://j-nita.onrender.com';
+
+    // ── State ─────────────────────────────────────────────────
+    let currentImage      = null;
+    let conditionedImage  = null;
+    let originalImageElement   = null;
+    let conditionedImageElement = null;
+    let backendWarmed     = false;
+    let ocrRawText        = '';
+    let outputMode        = 'markdown';
+    let activeStage       = 'input';
+    let completedStages   = new Set();
+    let selectedModel     = 'Nanonets-OCR2-3B';
+    let conditionController = null;
+    let ocrController       = null;
+
+    const MODELS = [
+        { id: 'Nanonets-OCR2-3B',  label: 'Nanonets-OCR2-3B'  },
+        { id: 'Chandra-OCR',       label: 'Chandra-OCR'        },
+        { id: 'Dots.OCR',          label: 'Dots.OCR'           },
+        { id: 'olmOCR-2-7B-1025',  label: 'olmOCR-2-7B-1025'  },
+    ];
+
+    const modelStatus = {};
+    MODELS.forEach(m => modelStatus[m.id] = 'untested');
+
+    // ── Pipeline state machine ────────────────────────────────
+    function setActiveStage(stage) {
+        activeStage = stage;
+        const pipeline = document.getElementById('pipeline');
+        pipeline.dataset.active = stage;
+
+        ['input', 'process', 'result'].forEach(s => {
+            const col = document.getElementById(`col-${s}`);
+            const tab = document.getElementById(`tab-${s}`);
+            col.classList.toggle('is-active', s === stage);
+            col.classList.toggle('is-closed', s !== stage);
+            tab.tabIndex = s !== stage ? 0 : -1;
+        });
+    }
+
+    function triggerStageComplete(stage) {
+        return new Promise(async resolve => {
+            const col = document.getElementById(`col-${stage}`);
+            if (col.classList.contains('was-completed')) { resolve(); return; }
+
+            col.classList.add('showing-complete-banner');
+            await wait(1800);
+            col.classList.remove('showing-complete-banner');
+            col.classList.add('showing-complete-check');
+            await wait(800);
+            col.classList.remove('showing-complete-check');
+            col.classList.add('was-completed');
+            completedStages.add(stage);
+            resolve();
+        });
+    }
+
+    // ── Utility ───────────────────────────────────────────────
+    function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    function humanizeError(err) {
+        const msg = err.message || '';
+        if (/fetch|network|failed to fetch/i.test(msg)) return 'Network error. Check your connection.';
+        if (/timeout|timed out/i.test(msg)) return 'Request timed out. Try a smaller image.';
+        if (/abort/i.test(msg)) return 'Request was cancelled.';
+        if (/502/i.test(msg)) return msg;
+        if (/413/i.test(msg)) return 'Image too large (30 MB limit).';
+        return msg || 'Something went wrong. Please try again.';
+    }
+
+    function showToast(message, type = 'info') {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        container.appendChild(toast);
+        setTimeout(() => toast.remove(), 4000);
+    }
+
+    async function fetchWithTimeout(resource, options = {}, timeoutMs = 5000) {
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), timeoutMs);
+        try {
+            return await fetch(resource, { ...options, signal: ctrl.signal });
+        } finally {
+            clearTimeout(tid);
+        }
+    }
+
+    // ── Backend warmup ────────────────────────────────────────
+    async function warmBackend(container) {
+        if (backendWarmed) return true;
+        const line = createLogLine(container, 'Waking backend (cold start on Render)');
+        for (let i = 1; i <= 3; i++) {
+            try {
+                markLogLine(line, 'pending', `Waking backend (attempt ${i}/3)`);
+                const r = await fetchWithTimeout(`${API_BASE}/api/health`, { cache: 'no-store' }, 5000);
+                if (r.ok) {
+                    backendWarmed = true;
+                    markLogLine(line, 'complete', 'Backend is awake.');
+                    return true;
                 }
-            });
+            } catch (_) {
+                markLogLine(line, 'pending', 'Waiting for backend...');
+                await wait(1200);
+            }
+        }
+        markLogLine(line, 'error', 'Backend still waking up. Continuing anyway.');
+        return false;
+    }
+
+    // ── Log helpers ───────────────────────────────────────────
+    function createLogLine(container, message) {
+        const line = document.createElement('div');
+        line.className = 'progress-line';
+        line.innerHTML = `<span class="progress-icon">⏳</span><span class="progress-message">${message}</span>`;
+        container.appendChild(line);
+        container.scrollTop = container.scrollHeight;
+        return line;
+    }
+
+    function markLogLine(line, status, message) {
+        const icon = line.querySelector('.progress-icon');
+        const text = line.querySelector('.progress-message');
+        if (status === 'complete') { line.classList.add('complete'); icon.textContent = '✅'; }
+        else if (status === 'error') { line.classList.add('error'); icon.textContent = '⚠️'; }
+        else { icon.textContent = '⏳'; }
+        if (message) text.textContent = message;
+    }
+
+    function showOverlay(id) { document.getElementById(id).classList.add('active'); }
+    function hideOverlay(id) { document.getElementById(id).classList.remove('active'); }
+
+    async function runStage(container, message, delay = 520) {
+        const line = createLogLine(container, message);
+        await wait(delay);
+        markLogLine(line, 'complete');
+        return line;
+    }
+
+    async function waitForPromiseWithUpdates(container, promise, message) {
+        const line = createLogLine(container, message);
+        let resolved = false;
+        while (!resolved) {
+            try {
+                const result = await Promise.race([promise, wait(1200)]);
+                if (result !== undefined) {
+                    resolved = true;
+                    markLogLine(line, 'complete', 'Backend response received.');
+                    return result;
+                }
+                markLogLine(line, 'pending', 'Waiting for backend response...');
+            } catch (e) {
+                markLogLine(line, 'error', 'Backend request failed.');
+                throw e;
+            }
+        }
+        return await promise;
+    }
+
+    // ── Canvas rendering ──────────────────────────────────────
+    function drawImageToCanvas(img, canvas, options = {}) {
+        const ctx = canvas.getContext('2d');
+        let maxW = options.maxWidth  || canvas.parentElement.clientWidth  - 4;
+        let maxH = options.maxHeight || canvas.parentElement.clientHeight - 4;
+        if (maxW <= 0) maxW = 320;
+        if (maxH <= 0) maxH = 240;
+        const ratio = Math.min(maxW / img.width, maxH / img.height);
+        const w = img.width * ratio, h = img.height * ratio;
+        const ox = (maxW - w) / 2, oy = (maxH - h) / 2;
+        canvas.width = maxW; canvas.height = maxH;
+        ctx.clearRect(0, 0, maxW, maxH);
+        ctx.drawImage(img, ox, oy, w, h);
+        return { ctx, width: w, height: h, offsetX: ox, offsetY: oy, scale: ratio };
+    }
+
+    function displayConditionedImage(img) {
+        const canvas = document.getElementById('conditionedCanvas');
+        const placeholder = document.getElementById('conditionedPlaceholder');
+        placeholder.style.display = 'none';
+        canvas.style.display = 'block';
+        drawImageToCanvas(img, canvas);
+    }
+
+    function renderBoundingBox(img) {
+        const canvas = document.getElementById('boundingCanvas');
+        const { ctx, width, height, offsetX, offsetY } = drawImageToCanvas(img, canvas, {
+            maxWidth: canvas.clientWidth, maxHeight: canvas.clientHeight
+        });
+        ctx.strokeStyle = '#c98a2a';
+        ctx.lineWidth = 2;
+        const ix = width * 0.08, iy = height * 0.08;
+        ctx.strokeRect(offsetX + ix, offsetY + iy, width - ix * 2, height - iy * 2);
+    }
+
+    function renderCropPreview(img) {
+        const canvas = document.getElementById('cropCanvas');
+        const w = canvas.clientWidth, h = canvas.clientHeight;
+        canvas.width = w; canvas.height = h;
+        const cw = img.width * 0.8, ch = img.height * 0.8;
+        const sx = (img.width - cw) / 2, sy = (img.height - ch) / 2;
+        canvas.getContext('2d').drawImage(img, sx, sy, cw, ch, 0, 0, w, h);
+    }
+
+    function renderFilterPreview(img) {
+        const canvas = document.getElementById('filterCanvas');
+        const { ctx } = drawImageToCanvas(img, canvas, {
+            maxWidth: canvas.clientWidth, maxHeight: canvas.clientHeight
+        });
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const d = imageData.data;
+        for (let i = 0; i < d.length; i += 4) {
+            const avg = (d[i] + d[i+1] + d[i+2]) / 3;
+            const v = avg > 170 ? 255 : avg * 0.9;
+            d[i] = d[i+1] = d[i+2] = v;
+        }
+        ctx.putImageData(imageData, 0, 0);
+    }
+
+    function renderFinalPreview(img) {
+        const canvas = document.getElementById('finalCanvas');
+        drawImageToCanvas(img, canvas, { maxWidth: canvas.clientWidth, maxHeight: canvas.clientHeight });
+    }
+
+    function renderAdvancedCanvases() {
+        if (!originalImageElement || !conditionedImageElement) return;
+        renderBoundingBox(originalImageElement);
+        renderCropPreview(originalImageElement);
+        renderFilterPreview(originalImageElement);
+        renderFinalPreview(conditionedImageElement);
+    }
+
+    function clearCanvas(id) {
+        const c = document.getElementById(id);
+        c.getContext('2d').clearRect(0, 0, c.width, c.height);
+    }
+
+    // ── File handling ─────────────────────────────────────────
+    function handleDragOver(e) {
+        e.preventDefault(); e.stopPropagation();
+        e.currentTarget.classList.add('dragover');
+    }
+
+    function handleDragLeave(e) {
+        e.currentTarget.classList.remove('dragover');
+    }
+
+    function handleDrop(e) {
+        e.preventDefault(); e.stopPropagation();
+        e.currentTarget.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) handleFile(files[0]);
+    }
+
+    function handleFileSelect(e) {
+        if (e.target.files.length > 0) handleFile(e.target.files[0]);
+    }
+
+    function handleFile(file) {
+        if (!file.type.startsWith('image/')) {
+            showToast('Please upload an image file', 'error');
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = e => {
+            const img = new Image();
+            img.onload = () => {
+                currentImage = e.target.result;
+                originalImageElement = img;
+
+                // Show canvas wrapper
+                document.getElementById('uploadArea').classList.add('hidden');
+                const wrapper = document.getElementById('inputCanvasWrapper');
+                wrapper.classList.remove('hidden');
+                const canvas = document.getElementById('originalCanvas');
+                canvas.style.display = 'block';
+                drawImageToCanvas(img, canvas);
+
+                // Reveal condition button
+                const overlay = document.getElementById('conditionBtnOverlay');
+                overlay.classList.add('has-image');
+                document.getElementById('conditionBtn').disabled = false;
+
+                // Reset downstream
+                conditionedImage = null;
+                ocrRawText = '';
+                document.getElementById('ocrBtn').disabled = true;
+                document.getElementById('rerunBtn').disabled = true;
+                document.getElementById('advancedBtn').disabled = true;
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // ── Condition image ───────────────────────────────────────
+    async function conditionImage(skipAnimation = false) {
+        if (!currentImage) { showToast('Upload an image first', 'error'); return; }
+
+        const btn = document.getElementById('conditionBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loading"></span> Conditioning...';
+
+        // Prepare process panel
+        const logContainer = document.getElementById('conditionLog');
+        logContainer.innerHTML = '';
+        showOverlay('conditionOverlay');
+        document.getElementById('conditionedCanvas').style.display = 'none';
+        document.getElementById('conditionedPlaceholder').style.display = 'flex';
+        resetAdvancedPanel();
+
+        // Start fetch immediately (runs in parallel with animation)
+        conditionController = new AbortController();
+        const timeoutId = setTimeout(() => conditionController.abort(), 90000);
+        const strength    = parseInt(document.getElementById('strength').value);
+        const compression = parseInt(document.getElementById('png_compression').value);
+
+        const requestPromise = fetch(`${API_BASE}/api/condition`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: conditionController.signal,
+            body: JSON.stringify({ image: currentImage, config: { strength, png_compression: compression } })
         });
 
-        document.getElementById('ocr_model').addEventListener('change', updatePrimaryModel);
-        updatePrimaryModel();
-
-        function drawImageToCanvas(img, canvas, options = {}) {
-            const ctx = canvas.getContext('2d');
-            let maxWidth = options.maxWidth || canvas.parentElement.clientWidth - 30;
-            let maxHeight = options.maxHeight || canvas.parentElement.clientHeight - 30;
-            if (maxWidth <= 0) maxWidth = canvas.clientWidth || 320;
-            if (maxHeight <= 0) maxHeight = canvas.clientHeight || 240;
-            const ratio = Math.min(maxWidth / img.width, maxHeight / img.height);
-            const width = img.width * ratio;
-            const height = img.height * ratio;
-            const offsetX = (maxWidth - width) / 2;
-            const offsetY = (maxHeight - height) / 2;
-
-            canvas.width = maxWidth;
-            canvas.height = maxHeight;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, offsetX, offsetY, width, height);
-
-            return { ctx, width, height, offsetX, offsetY, scale: ratio };
+        // Stage complete animation on INPUT, then advance to PROCESS
+        if (!skipAnimation) {
+            await triggerStageComplete('input');
+            setActiveStage('process');
         }
 
-        function createLogLine(container, message) {
-            const line = document.createElement('div');
-            line.className = 'progress-line';
-            line.innerHTML = `<span class="progress-icon">⏳</span><span class="progress-message">${message}</span>`;
-            container.appendChild(line);
-            container.scrollTop = container.scrollHeight;
-            return line;
-        }
+        try {
+            await warmBackend(logContainer);
 
-        function markLogLine(line, status, message) {
-            const icon = line.querySelector('.progress-icon');
-            const text = line.querySelector('.progress-message');
-            if (status === 'complete') {
-                line.classList.add('complete');
-                icon.textContent = '✅';
-            } else if (status === 'error') {
-                line.classList.add('error');
-                icon.textContent = '⚠️';
-            } else {
-                icon.textContent = '⏳';
-            }
-            if (message) {
-                text.textContent = message;
-            }
-        }
+            const stages = [
+                'Validating orientation and metadata',
+                'Detecting page edges and corners',
+                'Estimating bounding box geometry',
+                'Cropping to document region',
+                'Resizing for OCR clarity',
+                'Applying denoise + adaptive threshold',
+                'Refining strokes with morphology',
+            ];
+            for (const s of stages) await runStage(logContainer, s, 520);
 
-        function showOverlay(overlayId) {
-            const overlay = document.getElementById(overlayId);
-            overlay.classList.add('active');
-        }
+            const response = await waitForPromiseWithUpdates(logContainer, requestPromise, 'Waiting for backend');
 
-        function hideOverlay(overlayId) {
-            const overlay = document.getElementById(overlayId);
-            overlay.classList.remove('active');
-        }
-
-        async function wait(ms) {
-            return new Promise(resolve => setTimeout(resolve, ms));
-        }
-
-        async function fetchWithTimeout(resource, options = {}, timeoutMs = 4000) {
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), timeoutMs);
-            try {
-                return await fetch(resource, { ...options, signal: controller.signal });
-            } finally {
-                clearTimeout(timeout);
-            }
-        }
-
-        async function warmBackend(container) {
-            if (backendWarmed) {
-                return true;
-            }
-            const line = createLogLine(container, 'Waking backend (cold start on Render)');
-            for (let attempt = 1; attempt <= 3; attempt++) {
-                try {
-                    markLogLine(line, 'pending', `Waking backend (attempt ${attempt}/3)`);
-                    const response = await fetchWithTimeout(`${API_BASE}/api/health`, { cache: 'no-store' }, 5000);
-                    if (response.ok) {
-                        backendWarmed = true;
-                        markLogLine(line, 'complete', 'Backend is awake and responding.');
-                        return true;
-                    }
-                } catch (error) {
-                    markLogLine(line, 'pending', 'Waiting for backend response...');
-                    await wait(1200);
-                }
-            }
-            markLogLine(line, 'error', 'Backend is still waking up. Continuing with request.');
-            return false;
-        }
-
-        async function runStage(container, message, delay = 650) {
-            const line = createLogLine(container, message);
-            await wait(delay);
-            markLogLine(line, 'complete');
-            return line;
-        }
-
-        async function waitForPromiseWithUpdates(container, promise, message) {
-            const line = createLogLine(container, message);
-            let resolved = false;
-            while (!resolved) {
-                try {
-                    const result = await Promise.race([promise, wait(1200)]);
-                    if (result !== undefined) {
-                        resolved = true;
-                        markLogLine(line, 'complete', 'Backend response received.');
-                        return result;
-                    }
-                    markLogLine(line, 'pending', 'Waiting for backend response...');
-                } catch (error) {
-                    markLogLine(line, 'error', 'Backend request failed.');
-                    throw error;
-                }
-            }
-            return await promise;
-        }
-
-        function updatePrimaryModel() {
-            const primaryModel = document.getElementById('ocr_model').value;
-            document.querySelectorAll('.model-card').forEach(card => {
-                card.classList.remove('primary', 'selected');
-                if (card.dataset.model === primaryModel) {
-                    card.classList.add('primary');
-                }
-            });
-        }
-
-        function handleDragOver(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            e.currentTarget.classList.add('dragover');
-        }
-
-        function handleDrop(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            e.currentTarget.classList.remove('dragover');
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                handleFile(files[0]);
-            }
-        }
-
-        function handleFileSelect(e) {
-            if (e.target.files.length > 0) {
-                handleFile(e.target.files[0]);
-            }
-        }
-
-        function handleFile(file) {
-            if (!file.type.startsWith('image/')) {
-                showAlert('error', 'Please upload an image file');
-                return;
+            if (!response.ok) {
+                let errMsg = `Backend error ${response.status}`;
+                try { const e = await response.json(); if (e.error) errMsg = e.error; } catch (_) {}
+                throw new Error(errMsg);
             }
 
-            const reader = new FileReader();
-            reader.onload = function(e) {
+            const data = await response.json();
+            if (data.success) {
+                conditionedImage = data.conditioned_image;
                 const img = new Image();
-                img.onload = function() {
-                    currentImage = e.target.result;
-                    originalImageElement = img;
-                    displayImage(img, 'originalCanvas', 'originalPlaceholder');
-                    document.getElementById('conditionBtn').disabled = false;
-                    document.getElementById('ocrBtn').disabled = true;
-                    document.getElementById('conditionedPlaceholder').style.display = 'block';
-                    const textContent = document.getElementById('textContent');
-                    textContent.textContent = 'Text will appear here after OCR processing';
-                    textContent.classList.add('empty');
-                    resetAdvancedPanel();
+                img.onload = () => {
+                    conditionedImageElement = img;
+                    displayConditionedImage(img);
+                    document.getElementById('ocrBtn').disabled = false;
+                    document.getElementById('rerunBtn').disabled = false;
+                    document.getElementById('advancedBtn').disabled = false;
+                    renderAdvancedCanvases();
                     hideOverlay('conditionOverlay');
-                    hideOverlay('ocrOverlay');
+                    showToast('Image conditioned', 'success');
                 };
-                img.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
-        }
-
-        function displayImage(img, canvasId, placeholderId) {
-            const canvas = document.getElementById(canvasId);
-            const placeholder = document.getElementById(placeholderId);
-            placeholder.style.display = 'none';
-            canvas.style.display = 'block';
-
-            drawImageToCanvas(img, canvas, {
-                maxWidth: canvas.parentElement.clientWidth - 30,
-                maxHeight: 400
-            });
-        }
-
-        async function conditionImage() {
-            if (!currentImage) {
-                showAlert('error', 'Please upload an image first');
-                return;
-            }
-
-            const btn = document.getElementById('conditionBtn');
-            btn.disabled = true;
-            btn.innerHTML = '<span class="loading"></span> Conditioning...';
-
-            const logContainer = document.getElementById('conditionLog');
-            logContainer.innerHTML = '';
-            showOverlay('conditionOverlay');
-            document.getElementById('conditionedPlaceholder').style.display = 'none';
-            document.getElementById('conditionedCanvas').style.display = 'none';
-            resetAdvancedPanel();
-
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 90000);
-
-            try {
-                const strength = parseInt(document.getElementById('strength').value);
-                const compression = parseInt(document.getElementById('png_compression').value);
-
-                await warmBackend(logContainer);
-
-                const requestPromise = fetch(`${API_BASE}/api/condition`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    signal: controller.signal,
-                    body: JSON.stringify({
-                        image: currentImage,
-                        config: {
-                            strength: strength,
-                            png_compression: compression
-                        }
-                    })
-                });
-
-                const stages = [
-                    'Validating orientation and metadata',
-                    'Detecting page edges and corners',
-                    'Estimating bounding box geometry',
-                    'Cropping to the document region',
-                    'Resizing for OCR clarity',
-                    'Applying denoise + adaptive threshold',
-                    'Refining strokes with morphology'
-                ];
-
-                for (const stage of stages) {
-                    await runStage(logContainer, stage, 520);
-                }
-
-                const response = await waitForPromiseWithUpdates(
-                    logContainer,
-                    requestPromise,
-                    'Waiting for backend response'
-                );
-
-                if (!response.ok) {
-                    let errMsg = `Backend error ${response.status}`;
-                    try { const e = await response.json(); if (e.error) errMsg = e.error; } catch (_) {}
-                    throw new Error(errMsg);
-                }
-
-                const data = await response.json();
-
-                if (data.success) {
-                    conditionedImage = data.conditioned_image;
-                    const img = new Image();
-                    img.onload = function() {
-                        conditionedImageElement = img;
-                        displayImage(img, 'conditionedCanvas', 'conditionedPlaceholder');
-                        document.getElementById('ocrBtn').disabled = false;
-                        document.getElementById('advancedToggle').disabled = false;
-                        renderAdvancedCanvases();
-                        hideOverlay('conditionOverlay');
-                        showAlert('success', 'Image conditioned successfully!');
-                    };
-                    img.src = data.conditioned_image;
-                } else {
-                    const line = createLogLine(logContainer, 'Conditioning failed');
-                    markLogLine(line, 'error', data.error || 'Failed to condition image');
-                    showAlert('error', data.error || 'Failed to condition image');
-                }
-            } catch (error) {
+                img.src = data.conditioned_image;
+            } else {
                 const line = createLogLine(logContainer, 'Conditioning failed');
-                if (error.name === 'AbortError') {
-                    markLogLine(line, 'error', 'Request timed out – try a smaller image');
-                    showAlert('error', 'Request timed out – try a smaller image');
-                } else {
-                    markLogLine(line, 'error', `Error: ${error.message}`);
-                    showAlert('error', 'Error: ' + error.message);
-                }
-            } finally {
-                clearTimeout(timeoutId);
-                btn.disabled = false;
-                btn.innerHTML = '🖼️ Condition Image';
+                markLogLine(line, 'error', data.error || 'Failed to condition image');
+                showToast(data.error || 'Conditioning failed', 'error');
             }
+        } catch (err) {
+            backendWarmed = false;
+            const line = createLogLine(logContainer, 'Conditioning failed');
+            const msg = err.name === 'AbortError' ? 'Request timed out. Try a smaller image.' : humanizeError(err);
+            markLogLine(line, 'error', msg);
+            showToast(msg, 'error');
+        } finally {
+            clearTimeout(timeoutId);
+            conditionController = null;
+            btn.disabled = false;
+            btn.innerHTML = 'Condition Image';
         }
+    }
 
-        async function processOCR() {
-            if (!conditionedImage) {
-                showAlert('error', 'Please condition the image first');
-                return;
+    // ── Process OCR ───────────────────────────────────────────
+    async function processOCR() {
+        if (!conditionedImage) { showToast('Condition the image first', 'error'); return; }
+
+        const btn = document.getElementById('ocrBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loading"></span>';
+
+        // Prepare result panel
+        const logContainer = document.getElementById('ocrLog');
+        logContainer.innerHTML = '';
+        showOverlay('ocrOverlay');
+        const textContent = document.getElementById('textContent');
+        textContent.textContent = 'OCR running...';
+        textContent.classList.add('empty');
+
+        // Start fetch immediately
+        ocrController = new AbortController();
+        const timeoutId = setTimeout(() => ocrController.abort(), 180000);
+        const fallbacks = MODELS
+            .filter(m => m.id !== selectedModel && modelStatus[m.id] === 'success')
+            .map(m => m.id);
+
+        const requestPromise = fetch(`${API_BASE}/api/ocr`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: ocrController.signal,
+            body: JSON.stringify({
+                image: conditionedImage,
+                model: selectedModel,
+                fallback_models: fallbacks,
+                enable_fallback: fallbacks.length > 0
+            })
+        });
+
+        // Stage complete on PROCESS, advance to RESULT
+        await triggerStageComplete('process');
+        setActiveStage('result');
+
+        try {
+            await warmBackend(logContainer);
+
+            const stages = [
+                'Preparing OCR payload',
+                `Selecting model: ${selectedModel}`,
+                'Submitting to OCR engine',
+                'Running text extraction',
+                'Normalizing response format',
+            ];
+            for (const s of stages) await runStage(logContainer, s, 520);
+
+            const response = await waitForPromiseWithUpdates(logContainer, requestPromise, 'Waiting for OCR response');
+
+            if (!response.ok) {
+                let errMsg = `Backend error ${response.status}`;
+                try { const e = await response.json(); if (e.error) errMsg = e.error; } catch (_) {}
+                throw new Error(errMsg);
             }
 
-            const btn = document.getElementById('ocrBtn');
-            btn.disabled = true;
-            btn.innerHTML = '<span class="loading"></span> Processing OCR...';
-
-            const logContainer = document.getElementById('ocrLog');
-            logContainer.innerHTML = '';
-            showOverlay('ocrOverlay');
-            const textContent = document.getElementById('textContent');
-            textContent.textContent = 'OCR running...';
-            textContent.classList.add('empty');
-
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 180000);
-
-            try {
-                const model = document.getElementById('ocr_model').value;
-                const fallbackModels = Array.from(document.querySelectorAll('.model-card.selected'))
-                    .map(card => card.dataset.model);
-
-                await warmBackend(logContainer);
-
-                const requestPromise = fetch(`${API_BASE}/api/ocr`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    signal: controller.signal,
-                    body: JSON.stringify({
-                        image: conditionedImage,
-                        model: model,
-                        fallback_models: fallbackModels,
-                        enable_fallback: fallbackModels.length > 0
-                    })
-                });
-
-                const stages = [
-                    'Preparing OCR payload',
-                    `Selecting model: ${model}`,
-                    'Submitting request to OCR engine',
-                    'Running text extraction',
-                    'Normalizing response format'
-                ];
-
-                for (const stage of stages) {
-                    await runStage(logContainer, stage, 520);
-                }
-
-                const response = await waitForPromiseWithUpdates(
-                    logContainer,
-                    requestPromise,
-                    'Waiting for OCR response'
-                );
-
-                if (!response.ok) {
-                    let errMsg = `Backend error ${response.status}`;
-                    try { const e = await response.json(); if (e.error) errMsg = e.error; } catch (_) {}
-                    throw new Error(errMsg);
-                }
-
-                const data = await response.json();
-
-                if (data.success) {
-                    const textContent = document.getElementById('textContent');
-                    textContent.textContent = data.raw_text || data.markdown_text || 'No text extracted';
-                    textContent.classList.remove('empty');
-                    hideOverlay('ocrOverlay');
-                    showAlert('success', `OCR completed using model: ${data.model_used}`);
-                } else {
-                    const line = createLogLine(logContainer, 'OCR failed');
-                    markLogLine(line, 'error', data.error || 'OCR processing failed');
-                    showAlert('error', data.error || 'OCR processing failed');
-                }
-            } catch (error) {
+            const data = await response.json();
+            if (data.success) {
+                ocrRawText = data.raw_text || data.markdown_text || '';
+                updateModelStatus(data.model_used, 'success');
+                hideOverlay('ocrOverlay');
+                renderOutputText();
+                showToast(`OCR complete (${data.model_used})`, 'success');
+            } else {
+                updateModelStatus(selectedModel, 'failed');
                 const line = createLogLine(logContainer, 'OCR failed');
-                if (error.name === 'AbortError') {
-                    markLogLine(line, 'error', 'OCR timed out – try a different model');
-                    showAlert('error', 'OCR timed out – try a different model');
+                markLogLine(line, 'error', data.error || 'OCR processing failed');
+                showToast(data.error || 'OCR failed', 'error');
+            }
+        } catch (err) {
+            backendWarmed = false;
+            updateModelStatus(selectedModel, 'failed');
+            const line = createLogLine(logContainer, 'OCR failed');
+            const msg = err.name === 'AbortError' ? 'OCR timed out. Try a different model.' : humanizeError(err);
+            markLogLine(line, 'error', msg);
+            showToast(msg, 'error');
+        } finally {
+            clearTimeout(timeoutId);
+            ocrController = null;
+            btn.disabled = false;
+            btn.innerHTML = 'Run OCR';
+        }
+    }
+
+    // ── Output rendering ──────────────────────────────────────
+    function renderOutputText() {
+        const el = document.getElementById('textContent');
+        el.classList.remove('empty', 'preview-mode');
+        if (!ocrRawText) { el.classList.add('empty'); el.textContent = 'No text extracted.'; return; }
+        if (outputMode === 'preview' && typeof marked !== 'undefined') {
+            el.classList.add('preview-mode');
+            el.innerHTML = marked.parse(ocrRawText);
+        } else if (outputMode === 'plain') {
+            el.textContent = ocrRawText
+                .replace(/#{1,6}\s+/g, '')
+                .replace(/\*\*(.+?)\*\*/g, '$1')
+                .replace(/\*(.+?)\*/g, '$1')
+                .replace(/`(.+?)`/g, '$1')
+                .replace(/\[(.+?)\]\(.+?\)/g, '$1');
+        } else {
+            el.textContent = ocrRawText;
+        }
+    }
+
+    // ── Export ────────────────────────────────────────────────
+    function copyResult() {
+        if (!ocrRawText) { showToast('No text to copy', 'error'); return; }
+        navigator.clipboard.writeText(ocrRawText);
+        showToast('Copied to clipboard', 'success');
+        document.getElementById('exportDropdown').classList.add('hidden');
+    }
+
+    async function downloadResult(format) {
+        if (!ocrRawText) { showToast('No text to export', 'error'); return; }
+        document.getElementById('exportDropdown').classList.add('hidden');
+        if (format === 'md') {
+            const blob = new Blob([ocrRawText], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = Object.assign(document.createElement('a'), { href: url, download: 'ocr_result.md' });
+            a.click(); URL.revokeObjectURL(url);
+        } else {
+            try {
+                const r = await fetch(`${API_BASE}/api/export/${format}`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ markdown_text: ocrRawText })
+                });
+                if (r.ok) {
+                    const blob = await r.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = Object.assign(document.createElement('a'), { href: url, download: `ocr_result.${format}` });
+                    a.click(); URL.revokeObjectURL(url);
                 } else {
-                    markLogLine(line, 'error', `Error: ${error.message}`);
-                    showAlert('error', 'Error: ' + error.message);
+                    showToast(`Export failed`, 'error');
                 }
-            } finally {
-                clearTimeout(timeoutId);
-                btn.disabled = false;
-                btn.innerHTML = '🔍 Run OCR';
-            }
+            } catch (e) { showToast(humanizeError(e), 'error'); }
         }
+    }
 
-        function toggleAdvancedPanel() {
-            const panel = document.getElementById('advancedPanel');
-            panel.classList.toggle('active');
-            const button = document.getElementById('advancedToggle');
-            button.textContent = panel.classList.contains('active') ? 'Hide Advanced' : 'Advanced';
-        }
-
-        function resetAdvancedPanel() {
-            const panel = document.getElementById('advancedPanel');
-            panel.classList.remove('active');
-            document.getElementById('advancedToggle').disabled = true;
-            document.getElementById('advancedToggle').textContent = 'Advanced';
-        }
-
-        function renderAdvancedCanvases() {
-            if (!originalImageElement || !conditionedImageElement) {
-                return;
-            }
-
-            renderBoundingBox(originalImageElement);
-            renderCropPreview(originalImageElement);
-            renderFilterPreview(originalImageElement);
-            renderFinalPreview(conditionedImageElement);
-        }
-
-        function renderBoundingBox(img) {
-            const canvas = document.getElementById('boundingCanvas');
-            const { ctx, width, height, offsetX, offsetY } = drawImageToCanvas(img, canvas, {
-                maxWidth: canvas.clientWidth,
-                maxHeight: canvas.clientHeight
+    // ── API dropdown ──────────────────────────────────────────
+    function renderApiDropdown() {
+        const list = document.getElementById('apiModelList');
+        list.innerHTML = '';
+        MODELS.forEach(m => {
+            const st = modelStatus[m.id] || 'untested';
+            const icons = { success: '✓', failed: '✗', untested: '?', testing: '…' };
+            const item = document.createElement('div');
+            item.className = `api-model-item${m.id === selectedModel ? ' is-selected' : ''}`;
+            item.dataset.model = m.id;
+            item.innerHTML = `
+                <span class="model-status-icon model-status-${st}">${icons[st] || '?'}</span>
+                <span class="model-name">${m.label}</span>
+                <button class="btn btn-ghost btn-xs" data-testmodel="${m.id}">Test</button>`;
+            item.addEventListener('click', e => {
+                if (e.target.dataset.testmodel) { testModel(e.target.dataset.testmodel); return; }
+                selectModel(m.id);
             });
-            // Matches --stage-process (amber): bounding box belongs to the conditioning stage
-            ctx.strokeStyle = '#c98a2a';
-            ctx.lineWidth = 2;
-            const insetX = width * 0.08;
-            const insetY = height * 0.08;
-            ctx.strokeRect(offsetX + insetX, offsetY + insetY, width - insetX * 2, height - insetY * 2);
+            list.appendChild(item);
+        });
+    }
+
+    function selectModel(id) {
+        selectedModel = id;
+        renderApiDropdown();
+        showToast(`Model: ${id}`, 'info');
+    }
+
+    function updateModelStatus(modelId, status) {
+        if (modelId && modelStatus.hasOwnProperty(modelId)) {
+            modelStatus[modelId] = status;
+            renderApiDropdown();
         }
+    }
 
-        function renderCropPreview(img) {
-            const canvas = document.getElementById('cropCanvas');
-            const ctx = canvas.getContext('2d');
-            const width = canvas.clientWidth;
-            const height = canvas.clientHeight;
-            canvas.width = width;
-            canvas.height = height;
-
-            const cropWidth = img.width * 0.8;
-            const cropHeight = img.height * 0.8;
-            const sx = (img.width - cropWidth) / 2;
-            const sy = (img.height - cropHeight) / 2;
-            ctx.clearRect(0, 0, width, height);
-            ctx.drawImage(img, sx, sy, cropWidth, cropHeight, 0, 0, width, height);
+    async function testModel(modelId) {
+        updateModelStatus(modelId, 'testing');
+        try {
+            // Tiny 1x1 white PNG
+            const testImg = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQI12NgAAIABQAABjE+ibYAAAAASUVORK5CYII=';
+            const r = await fetchWithTimeout(`${API_BASE}/api/ocr`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: testImg, model: modelId, enable_fallback: false })
+            }, 15000);
+            updateModelStatus(modelId, r.ok ? 'success' : 'failed');
+        } catch (_) {
+            updateModelStatus(modelId, 'failed');
         }
+    }
 
-        function renderFilterPreview(img) {
-            const canvas = document.getElementById('filterCanvas');
-            const { ctx } = drawImageToCanvas(img, canvas, {
-                maxWidth: canvas.clientWidth,
-                maxHeight: canvas.clientHeight
-            });
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const data = imageData.data;
-            for (let i = 0; i < data.length; i += 4) {
-                const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-                const boost = avg > 170 ? 255 : avg * 0.9;
-                data[i] = boost;
-                data[i + 1] = boost;
-                data[i + 2] = boost;
-            }
-            ctx.putImageData(imageData, 0, 0);
+    // ── Panel toggles ─────────────────────────────────────────
+    function toggleAdjustDrawer() {
+        const drawer = document.getElementById('adjustDrawer');
+        const btn = document.getElementById('adjustBtn');
+        const open = drawer.classList.toggle('open');
+        btn.setAttribute('aria-expanded', open);
+        drawer.setAttribute('aria-hidden', !open);
+    }
+
+    function toggleAdvancedPanel() {
+        const panel = document.getElementById('advancedPanel');
+        const btn   = document.getElementById('advancedBtn');
+        const open  = panel.classList.toggle('open');
+        btn.textContent = open ? 'Hide' : 'Advanced';
+        btn.setAttribute('aria-expanded', open);
+        panel.setAttribute('aria-hidden', !open);
+        if (open) renderAdvancedCanvases();
+    }
+
+    function resetAdvancedPanel() {
+        const panel = document.getElementById('advancedPanel');
+        panel.classList.remove('open');
+        document.getElementById('advancedBtn').textContent = 'Advanced';
+        document.getElementById('advancedBtn').setAttribute('aria-expanded', 'false');
+        ['boundingCanvas','cropCanvas','filterCanvas','finalCanvas'].forEach(clearCanvas);
+    }
+
+    function toggleApiDropdown() {
+        const dd  = document.getElementById('apiDropdown');
+        const btn = document.getElementById('apiBtn');
+        const open = dd.classList.toggle('hidden') ? false : true;
+        btn.setAttribute('aria-expanded', open);
+        if (open) renderApiDropdown();
+        document.getElementById('exportDropdown').classList.add('hidden');
+    }
+
+    function toggleExportDropdown() {
+        const dd  = document.getElementById('exportDropdown');
+        const btn = document.getElementById('exportBtn');
+        const open = dd.classList.toggle('hidden') ? false : true;
+        btn.setAttribute('aria-expanded', open);
+        document.getElementById('apiDropdown').classList.add('hidden');
+    }
+
+    function updateRangeValue(input) {
+        const span = document.getElementById(input.id + '_value');
+        if (span) span.textContent = input.value;
+    }
+
+    // ── Reset ─────────────────────────────────────────────────
+    function resetAll() {
+        // Cancel in-flight requests
+        if (conditionController) conditionController.abort();
+        if (ocrController) ocrController.abort();
+
+        currentImage = conditionedImage = originalImageElement = conditionedImageElement = null;
+        ocrRawText = '';
+        backendWarmed = false;
+        completedStages.clear();
+
+        // Input panel
+        document.getElementById('uploadArea').classList.remove('hidden');
+        document.getElementById('inputCanvasWrapper').classList.add('hidden');
+        document.getElementById('conditionBtnOverlay').classList.remove('has-image');
+        document.getElementById('conditionBtn').disabled = false;
+        document.getElementById('conditionBtn').innerHTML = 'Condition Image';
+        document.getElementById('fileInput').value = '';
+
+        // Process panel
+        document.getElementById('conditionedCanvas').style.display = 'none';
+        document.getElementById('conditionedPlaceholder').style.display = 'flex';
+        document.getElementById('ocrBtn').disabled = true;
+        document.getElementById('rerunBtn').disabled = true;
+        document.getElementById('advancedBtn').disabled = true;
+        hideOverlay('conditionOverlay');
+        document.getElementById('conditionLog').innerHTML = '';
+        document.getElementById('adjustDrawer').classList.remove('open');
+        resetAdvancedPanel();
+
+        // Result panel
+        const tc = document.getElementById('textContent');
+        tc.textContent = 'OCR results will appear here';
+        tc.className = 'text-content empty';
+        hideOverlay('ocrOverlay');
+        document.getElementById('ocrLog').innerHTML = '';
+
+        // Remove completion markers
+        ['input', 'process', 'result'].forEach(s => {
+            const col = document.getElementById(`col-${s}`);
+            col.classList.remove('was-completed', 'showing-complete-banner', 'showing-complete-check');
+        });
+
+        setActiveStage('input');
+    }
+
+    // ── Output type switcher ──────────────────────────────────
+    document.getElementById('outputType').addEventListener('click', e => {
+        const btn = e.target.closest('.seg-btn');
+        if (!btn) return;
+        document.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        outputMode = btn.dataset.mode;
+        if (ocrRawText) renderOutputText();
+    });
+
+    // ── Event wiring ──────────────────────────────────────────
+    document.getElementById('fileInput').addEventListener('change', handleFileSelect);
+
+    const uploadArea = document.getElementById('uploadArea');
+    uploadArea.addEventListener('click', () => document.getElementById('fileInput').click());
+    uploadArea.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') document.getElementById('fileInput').click(); });
+    uploadArea.addEventListener('dragover', handleDragOver);
+    uploadArea.addEventListener('dragleave', handleDragLeave);
+    uploadArea.addEventListener('drop', handleDrop);
+
+    document.getElementById('conditionBtn').addEventListener('click', () => conditionImage(false));
+    document.getElementById('ocrBtn').addEventListener('click', processOCR);
+    document.getElementById('rerunBtn').addEventListener('click', () => conditionImage(true));
+    document.getElementById('resetBtn').addEventListener('click', resetAll);
+    document.getElementById('adjustBtn').addEventListener('click', toggleAdjustDrawer);
+    document.getElementById('advancedBtn').addEventListener('click', toggleAdvancedPanel);
+    document.getElementById('apiBtn').addEventListener('click', toggleApiDropdown);
+    document.getElementById('exportBtn').addEventListener('click', toggleExportDropdown);
+    document.getElementById('reorderBtn').addEventListener('click', () => {
+        document.getElementById('batchReorderOverlay').classList.remove('hidden');
+    });
+
+    // Closed panel tabs — click to reopen
+    ['input', 'process', 'result'].forEach(stage => {
+        const tab = document.getElementById(`tab-${stage}`);
+        tab.addEventListener('click', () => {
+            if (activeStage !== stage) setActiveStage(stage);
+        });
+        tab.addEventListener('keydown', e => {
+            if ((e.key === 'Enter' || e.key === ' ') && activeStage !== stage) setActiveStage(stage);
+        });
+    });
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', e => {
+        if (!e.target.closest('#apiBtn') && !e.target.closest('#apiDropdown')) {
+            document.getElementById('apiDropdown').classList.add('hidden');
+            document.getElementById('apiBtn').setAttribute('aria-expanded', 'false');
         }
-
-        function renderFinalPreview(img) {
-            const canvas = document.getElementById('finalCanvas');
-            drawImageToCanvas(img, canvas, {
-                maxWidth: canvas.clientWidth,
-                maxHeight: canvas.clientHeight
-            });
+        if (!e.target.closest('#exportBtn') && !e.target.closest('#exportDropdown')) {
+            document.getElementById('exportDropdown').classList.add('hidden');
+            document.getElementById('exportBtn').setAttribute('aria-expanded', 'false');
         }
-
-        function clearCanvas(canvasId) {
-            const canvas = document.getElementById(canvasId);
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
-
-        function resetAll() {
-            currentImage = null;
-            conditionedImage = null;
-            originalImageElement = null;
-            conditionedImageElement = null;
-            document.getElementById('originalCanvas').style.display = 'none';
-            document.getElementById('conditionedCanvas').style.display = 'none';
-            document.getElementById('originalPlaceholder').style.display = 'block';
-            document.getElementById('conditionedPlaceholder').style.display = 'block';
-            const textContent = document.getElementById('textContent');
-            textContent.textContent = 'Text will appear here after OCR processing';
-            textContent.classList.add('empty');
-            document.getElementById('conditionBtn').disabled = true;
-            document.getElementById('ocrBtn').disabled = true;
-            document.getElementById('fileInput').value = '';
-            resetAdvancedPanel();
-            hideOverlay('conditionOverlay');
-            hideOverlay('ocrOverlay');
-            clearCanvas('boundingCanvas');
-            clearCanvas('cropCanvas');
-            clearCanvas('filterCanvas');
-            clearCanvas('finalCanvas');
-            document.getElementById('conditionLog').innerHTML = '';
-            document.getElementById('ocrLog').innerHTML = '';
-        }
-
-        function showAlert(type, message) {
-            const alert = document.getElementById(type + 'Alert');
-            if (alert) {
-                alert.textContent = message;
-                alert.style.display = 'block';
-                setTimeout(() => {
-                    alert.style.display = 'none';
-                }, 5000);
-            }
-        }
-
-        function toggleSection(header) {
-            const content = header.nextElementSibling;
-            const arrow = header.querySelector('span:last-child');
-            content.classList.toggle('active');
-            arrow.textContent = content.classList.contains('active') ? '▼' : '▶';
-        }
-
-        function updateRangeValue(input) {
-            const valueSpan = document.getElementById(input.id + '_value');
-            if (valueSpan) {
-                valueSpan.textContent = input.value;
-            }
-        }
-
-    </script>
+    });
+</script>
 </body>
 </html>
