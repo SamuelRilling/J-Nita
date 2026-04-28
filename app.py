@@ -17,6 +17,7 @@ import json
 import base64
 import logging
 import tempfile
+import concurrent.futures
 
 import cv2
 import numpy as np
@@ -45,7 +46,8 @@ JPEG_QUALITY = 75                       # Stage previews
 
 OCR_HF_SPACE = "prithivMLmods/Multimodal-OCR3"
 DEFAULT_OCR_MODEL = "Nanonets-OCR2-3B"
-OCR_RETRY_KEYWORDS = ("timeout", "gpu", "connection", "queue", "retry", "503", "504")
+OCR_RETRY_KEYWORDS = ("timeout", "gpu", "connection", "queue", "retry", "503", "504", "gradio", "unavailable", "space")
+OCR_PREDICT_TIMEOUT = 100   # seconds; leaves headroom under gunicorn's 120s
 
 
 # ---------------------------------------------------------------------------
@@ -72,6 +74,22 @@ def _get_ocr_client():
         _ocr_client = Client(OCR_HF_SPACE)
         logger.info("OCR client initialized for %s", OCR_HF_SPACE)
     return _ocr_client
+
+
+def _reset_ocr_client():
+    global _ocr_client
+    _ocr_client = None
+    logger.info("OCR client reset")
+
+
+def _predict_with_timeout(client, *args, **kwargs):
+    """Run client.predict() in a thread so we can enforce a hard timeout."""
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(client.predict, *args, **kwargs)
+        try:
+            return future.result(timeout=OCR_PREDICT_TIMEOUT)
+        except concurrent.futures.TimeoutError:
+            raise TimeoutError(f"OCR predict timed out after {OCR_PREDICT_TIMEOUT}s")
 
 
 def _load_config():
@@ -264,7 +282,8 @@ def ocr_endpoint():
         for model_name in models_to_try:
             try:
                 logger.info("Trying OCR model %s (handwriting=%s)", model_name, handwriting_mode)
-                result = client.predict(
+                result = _predict_with_timeout(
+                    client,
                     model_name, prompt, handle_file(tmp_path),
                     2048, 0.7, 0.9, 50, 1.1, 60,
                     api_name="/run_ocr",
@@ -294,6 +313,9 @@ def ocr_endpoint():
             except Exception as e:
                 last_error = str(e)
                 logger.warning("OCR failed with %s: %s", model_name, last_error)
+                if any(k in last_error.lower() for k in ("connection", "timeout", "reset", "unavailable", "space")):
+                    _reset_ocr_client()
+                    client = _get_ocr_client()
                 if not any(k in last_error.lower() for k in OCR_RETRY_KEYWORDS):
                     break
 

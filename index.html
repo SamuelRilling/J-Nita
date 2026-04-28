@@ -1092,7 +1092,9 @@
                 );
 
                 if (!response.ok) {
-                    throw new Error(`Backend responded with ${response.status}`);
+                    let errMsg = `Backend error ${response.status}`;
+                    try { const e = await response.json(); if (e.error) errMsg = e.error; } catch (_) {}
+                    throw new Error(errMsg);
                 }
 
                 const data = await response.json();
@@ -1189,7 +1191,9 @@
                 );
 
                 if (!response.ok) {
-                    throw new Error(`Backend responded with ${response.status}`);
+                    let errMsg = `Backend error ${response.status}`;
+                    try { const e = await response.json(); if (e.error) errMsg = e.error; } catch (_) {}
+                    throw new Error(errMsg);
                 }
 
                 const data = await response.json();
