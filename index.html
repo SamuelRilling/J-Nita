@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>J-Nita v5.0 OCR Studio</title>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
     <style>
         :root {
             --paper:        oklch(98%   0.005 85);
@@ -54,7 +57,7 @@
         }
 
         body {
-            font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             background: var(--ink);
             color: var(--ink);
         }
@@ -83,7 +86,7 @@
         .stripe-seg {
             flex: 1;
             opacity: 0.28;
-            transition: opacity 500ms var(--ease-out), height 500ms var(--ease-out);
+            transition: opacity 500ms var(--ease-out);
             height: 100%;
         }
 
@@ -248,6 +251,13 @@
             align-items: center;
             gap: 6px;
             flex-wrap: wrap;
+        }
+
+        .col-actions-divider {
+            width: 1px;
+            height: 18px;
+            background: var(--hairline);
+            flex-shrink: 0;
         }
 
         /* ── Col content area ───────────────────────────────── */
@@ -427,7 +437,7 @@
         .condition-btn-overlay.has-image { pointer-events: auto; }
 
         .condition-btn-overlay #conditionBtn {
-            opacity: 0.55;
+            opacity: 0.78;
             transform: scale(1);
             transition: opacity 150ms ease, transform 150ms ease,
                         background-color 150ms ease, color 150ms ease;
@@ -651,7 +661,7 @@
             gap: 4px;
         }
 
-        .advanced-card h4 {
+        .advanced-card h3 {
             font-size: 0.72em;
             color: var(--muted);
             font-weight: 600;
@@ -698,7 +708,7 @@
 
         .text-content.preview-mode {
             white-space: normal;
-            font-family: "Inter", sans-serif;
+            font-family: "DM Sans", sans-serif;
             font-size: 1em;
         }
 
@@ -1018,7 +1028,7 @@
             <div class="col-header">
                 <h2 class="col-title"><span class="col-num">1</span>Input</h2>
                 <div class="col-actions">
-                    <button class="btn btn-ghost btn-sm" id="reorderBtn" aria-label="Reorder files">Reorder</button>
+                    <button class="btn btn-ghost btn-sm" id="reorderBtn" disabled title="Batch processing coming soon" aria-label="Batch file reorder (coming soon)">Reorder</button>
                 </div>
             </div>
             <div class="col-content" id="inputContent">
@@ -1072,6 +1082,7 @@
                     <button class="btn btn-ghost btn-sm" id="advancedBtn" disabled aria-expanded="false" aria-controls="advancedPanel">Advanced</button>
                     <button class="btn btn-ghost btn-sm" id="rerunBtn" disabled aria-label="Rerun conditioning">Rerun</button>
                     <button class="btn btn-ghost btn-cancel btn-sm hidden" id="cancelConditionBtn" aria-label="Cancel conditioning">Cancel</button>
+                    <div class="col-actions-divider" aria-hidden="true"></div>
                     <button class="btn btn-primary btn-sm" id="ocrBtn" disabled aria-label="Run OCR">Run OCR</button>
                 </div>
             </div>
@@ -1086,19 +1097,19 @@
                 <div class="advanced-panel" id="advancedPanel" aria-hidden="true">
                     <div class="advanced-grid">
                         <div class="advanced-card">
-                            <h4>Corner Detection</h4>
+                            <h3>Corner Detection</h3>
                             <canvas id="boundingCanvas" class="advanced-canvas"></canvas>
                         </div>
                         <div class="advanced-card">
-                            <h4>Smart Crop</h4>
+                            <h3>Smart Crop</h3>
                             <canvas id="cropCanvas" class="advanced-canvas"></canvas>
                         </div>
                         <div class="advanced-card">
-                            <h4>Filter Pass</h4>
+                            <h3>Filter Pass</h3>
                             <canvas id="filterCanvas" class="advanced-canvas"></canvas>
                         </div>
                         <div class="advanced-card">
-                            <h4>Final Conditioned</h4>
+                            <h3>Final Conditioned</h3>
                             <canvas id="finalCanvas" class="advanced-canvas"></canvas>
                         </div>
                     </div>
@@ -1150,7 +1161,7 @@
                         <button class="seg-btn" data-mode="preview">Preview</button>
                     </div>
                     <div class="dropdown-anchor">
-                        <button class="btn btn-ghost btn-sm" id="apiBtn" aria-expanded="false" aria-haspopup="true">API</button>
+                        <button class="btn btn-ghost btn-sm" id="apiBtn" aria-expanded="false" aria-haspopup="true" aria-label="Select OCR model">Model: <span id="apiModelLabel">Nanonets</span> ▾</button>
                         <div class="inline-dropdown hidden" id="apiDropdown" role="menu">
                             <div id="apiModelList"></div>
                         </div>
@@ -1759,6 +1770,8 @@
     function selectModel(id) {
         selectedModel = id;
         renderApiDropdown();
+        const shortName = id.split('-')[0];
+        document.getElementById('apiModelLabel').textContent = shortName;
         showToast(`Model: ${id}`, 'info');
     }
 
@@ -1910,9 +1923,6 @@
     document.getElementById('advancedBtn').addEventListener('click', toggleAdvancedPanel);
     document.getElementById('apiBtn').addEventListener('click', toggleApiDropdown);
     document.getElementById('exportBtn').addEventListener('click', toggleExportDropdown);
-    document.getElementById('reorderBtn').addEventListener('click', () => {
-        document.getElementById('batchReorderOverlay').classList.remove('hidden');
-    });
     document.getElementById('batchOverlayClose').addEventListener('click', () => {
         document.getElementById('batchReorderOverlay').classList.add('hidden');
     });
