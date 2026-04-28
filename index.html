@@ -72,16 +72,27 @@
             flex-shrink: 0;
         }
 
-        .topbar::after {
-            content: "";
+        .topbar-stripe {
             position: absolute;
             left: 0; right: 0; bottom: 0;
+            display: flex;
             height: 2px;
-            background: linear-gradient(90deg,
-                var(--stage-input)   0%       33.33%,
-                var(--stage-process) 33.33%   66.66%,
-                var(--stage-result)  66.66%   100%);
+            gap: 0;
         }
+
+        .stripe-seg {
+            flex: 1;
+            opacity: 0.28;
+            transition: opacity 500ms var(--ease-out), height 500ms var(--ease-out);
+            height: 100%;
+        }
+
+        .stripe-seg[data-seg="input"]   { background: var(--stage-input); }
+        .stripe-seg[data-seg="process"] { background: var(--stage-process); }
+        .stripe-seg[data-seg="result"]  { background: var(--stage-result); }
+
+        .stripe-seg.is-active    { opacity: 1; }
+        .stripe-seg.was-active   { opacity: 0.55; }
 
         .topbar-brand {
             font-size: 1.1em;
@@ -329,6 +340,16 @@
 
         .btn-ghost:disabled { opacity: 0.4; cursor: not-allowed; }
 
+        .btn-cancel {
+            color: var(--signal);
+            border-color: oklch(82% 0.08 28);
+        }
+
+        .btn-cancel:hover:not(:disabled) {
+            background: var(--signal-tint);
+            color: oklch(38% 0.16 28);
+        }
+
         /* ── Upload zone ────────────────────────────────────── */
         .upload-zone {
             flex: 1;
@@ -496,12 +517,6 @@
 
         .progress-icon { font-size: 0.95em; }
         .progress-message { flex: 1; }
-
-        /* Cancel button inside overlay */
-        .overlay-cancel {
-            margin-top: 12px;
-            align-self: center;
-        }
 
         /* ── Stage-complete overlay ──────────────────────────── */
         .stage-complete-overlay {
@@ -935,6 +950,45 @@
 
         /* ── Misc ────────────────────────────────────────────── */
         .hidden { display: none !important; }
+
+        /* ── Focus ring ─────────────────────────────────────── */
+        *:focus { outline: none; }
+
+        *:focus-visible {
+            outline: 2px solid var(--stage-process);
+            outline-offset: 2px;
+            border-radius: 4px;
+        }
+
+        /* ── Completed tab state ────────────────────────────── */
+        .stage-col.was-completed .col-tab-dot {
+            outline: 2px solid var(--stage-result);
+            outline-offset: 2px;
+        }
+
+        .stage-col.was-completed .col-tab::after {
+            content: "✓";
+            font-size: 0.68em;
+            color: var(--stage-result);
+            font-weight: 800;
+            letter-spacing: 0;
+            writing-mode: horizontal-tb;
+            transform: none;
+        }
+
+        /* ── Reduced motion ─────────────────────────────────── */
+        @media (prefers-reduced-motion: reduce) {
+            #pipeline { transition: none; }
+            .col-body { transition: none; }
+            .col-tab  { transition: none; }
+            .btn      { transition: none; }
+            .stage-complete-overlay,
+            .stage-complete-banner,
+            .stage-complete-check { transition: none; }
+            .upload-zone { transition: none; }
+            @keyframes spin { to { transform: rotate(360deg); } }
+            @keyframes toastIn { from { opacity: 1; transform: none; } }
+        }
     </style>
 </head>
 <body>
@@ -944,6 +998,11 @@
     <div class="topbar-actions">
         <span class="status-pill" id="backendStatus">j-nita.onrender.com</span>
         <button class="btn btn-ghost btn-sm" id="resetBtn">Reset</button>
+    </div>
+    <div class="topbar-stripe" aria-hidden="true">
+        <div class="stripe-seg is-active" data-seg="input"></div>
+        <div class="stripe-seg" data-seg="process"></div>
+        <div class="stripe-seg" data-seg="result"></div>
     </div>
 </div>
 
@@ -978,11 +1037,12 @@
                 </div>
             </div>
             <!-- Batch reorder mockup -->
-            <div class="panel-overlay hidden" id="batchReorderOverlay">
+            <div class="panel-overlay hidden" id="batchReorderOverlay"
+                 role="dialog" aria-modal="true" aria-labelledby="batchOverlayTitle">
                 <div class="panel-overlay-header">
-                    <span>File Order</span>
+                    <span id="batchOverlayTitle">File Order</span>
                     <span class="coming-soon-badge">Coming soon</span>
-                    <button class="btn btn-ghost btn-sm close-btn" onclick="document.getElementById('batchReorderOverlay').classList.add('hidden')">Close</button>
+                    <button class="btn btn-ghost btn-sm close-btn" id="batchOverlayClose">Close</button>
                 </div>
                 <div class="batch-reorder-cards">
                     <div class="batch-card">Document_001.jpg</div>
@@ -1008,10 +1068,10 @@
             <div class="col-header">
                 <h2 class="col-title"><span class="col-num">2</span>Condition</h2>
                 <div class="col-actions">
-                    <button class="btn btn-ghost btn-sm" id="adjustBtn" aria-expanded="false">Adjust</button>
-                    <button class="btn btn-ghost btn-sm" id="advancedBtn" disabled aria-expanded="false">Advanced</button>
+                    <button class="btn btn-ghost btn-sm" id="adjustBtn" aria-expanded="false" aria-controls="adjustDrawer">Adjust</button>
+                    <button class="btn btn-ghost btn-sm" id="advancedBtn" disabled aria-expanded="false" aria-controls="advancedPanel">Advanced</button>
                     <button class="btn btn-ghost btn-sm" id="rerunBtn" disabled aria-label="Rerun conditioning">Rerun</button>
-                    <button class="btn btn-ghost btn-sm hidden" id="cancelConditionBtn" aria-label="Cancel conditioning">Cancel</button>
+                    <button class="btn btn-ghost btn-cancel btn-sm hidden" id="cancelConditionBtn" aria-label="Cancel conditioning">Cancel</button>
                     <button class="btn btn-primary btn-sm" id="ocrBtn" disabled aria-label="Run OCR">Run OCR</button>
                 </div>
             </div>
@@ -1083,7 +1143,7 @@
             <div class="col-header">
                 <h2 class="col-title"><span class="col-num">3</span>OCR</h2>
                 <div class="col-actions">
-                    <button class="btn btn-ghost btn-sm hidden" id="cancelOcrBtn" aria-label="Cancel OCR">Cancel</button>
+                    <button class="btn btn-ghost btn-cancel btn-sm hidden" id="cancelOcrBtn" aria-label="Cancel OCR">Cancel</button>
                     <div class="segmented-control" id="outputType" role="group" aria-label="Output format">
                         <button class="seg-btn active" data-mode="markdown">Markdown</button>
                         <button class="seg-btn" data-mode="plain">Plain</button>
@@ -1155,15 +1215,19 @@
     // ── Pipeline state machine ────────────────────────────────
     function setActiveStage(stage) {
         activeStage = stage;
-        const pipeline = document.getElementById('pipeline');
-        pipeline.dataset.active = stage;
+        document.getElementById('pipeline').dataset.active = stage;
 
         ['input', 'process', 'result'].forEach(s => {
             const col = document.getElementById(`col-${s}`);
             const tab = document.getElementById(`tab-${s}`);
+            const seg = document.querySelector(`.stripe-seg[data-seg="${s}"]`);
             col.classList.toggle('is-active', s === stage);
             col.classList.toggle('is-closed', s !== stage);
             tab.tabIndex = s !== stage ? 0 : -1;
+            if (seg) {
+                seg.classList.toggle('is-active', s === stage);
+                seg.classList.toggle('was-active', completedStages.has(s) && s !== stage);
+            }
         });
     }
 
@@ -1172,12 +1236,15 @@
             const col = document.getElementById(`col-${stage}`);
             if (col.classList.contains('was-completed')) { resolve(); return; }
 
-            col.classList.add('showing-complete-banner');
-            await wait(1800);
-            col.classList.remove('showing-complete-banner');
-            col.classList.add('showing-complete-check');
-            await wait(800);
-            col.classList.remove('showing-complete-check');
+            if (!prefersReducedMotion()) {
+                col.classList.add('showing-complete-banner');
+                await wait(1800);
+                col.classList.remove('showing-complete-banner');
+                col.classList.add('showing-complete-check');
+                await wait(800);
+                col.classList.remove('showing-complete-check');
+            }
+
             col.classList.add('was-completed');
             completedStages.add(stage);
             resolve();
@@ -1186,6 +1253,10 @@
 
     // ── Utility ───────────────────────────────────────────────
     function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+    function prefersReducedMotion() {
+        return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    }
 
     function humanizeError(err) {
         const msg = err.message || '';
@@ -1219,22 +1290,22 @@
     // ── Backend warmup ────────────────────────────────────────
     async function warmBackend(container) {
         if (backendWarmed) return true;
-        const line = createLogLine(container, 'Waking backend (cold start on Render)');
+        const line = createLogLine(container, 'Starting up (first run may take ~30s)');
         for (let i = 1; i <= 3; i++) {
             try {
-                markLogLine(line, 'pending', `Waking backend (attempt ${i}/3)`);
+                markLogLine(line, 'pending', `Connecting to backend (attempt ${i}/3)`);
                 const r = await fetchWithTimeout(`${API_BASE}/api/health`, { cache: 'no-store' }, 5000);
                 if (r.ok) {
                     backendWarmed = true;
-                    markLogLine(line, 'complete', 'Backend is awake.');
+                    markLogLine(line, 'complete', 'Connected.');
                     return true;
                 }
             } catch (_) {
-                markLogLine(line, 'pending', 'Waiting for backend...');
+                markLogLine(line, 'pending', 'Still starting up, please wait...');
                 await wait(1200);
             }
         }
-        markLogLine(line, 'error', 'Backend still waking up. Continuing anyway.');
+        markLogLine(line, 'error', 'Backend slow to respond. Continuing anyway.');
         return false;
     }
 
@@ -1428,7 +1499,7 @@
 
         const btn = document.getElementById('conditionBtn');
         btn.disabled = true;
-        btn.innerHTML = '<span class="loading"></span> Conditioning...';
+        btn.innerHTML = '<span class="loading" aria-hidden="true"></span> Conditioning...';
         document.getElementById('cancelConditionBtn').classList.remove('hidden');
 
         // Prepare process panel
@@ -1452,23 +1523,24 @@
             body: JSON.stringify({ image: currentImage, config: { strength, png_compression: compression } })
         });
 
-        // Stage complete animation on INPUT, then advance to PROCESS
-        if (!skipAnimation) {
-            await triggerStageComplete('input');
-            setActiveStage('process');
-        }
-
         try {
+            // Stage complete animation on INPUT, then advance to PROCESS
+            if (!skipAnimation) {
+                await triggerStageComplete('input');
+                if (conditionController.signal.aborted) { hideOverlay('conditionOverlay'); return; }
+                setActiveStage('process');
+            }
+
             await warmBackend(logContainer);
 
             const stages = [
-                'Validating orientation and metadata',
-                'Detecting page edges and corners',
-                'Estimating bounding box geometry',
-                'Cropping to document region',
-                'Resizing for OCR clarity',
-                'Applying denoise + adaptive threshold',
-                'Refining strokes with morphology',
+                'Checking image orientation',
+                'Detecting page edges',
+                'Locating document boundaries',
+                'Cropping to document area',
+                'Scaling for OCR',
+                'Applying noise reduction and contrast',
+                'Sharpening text strokes',
             ];
             for (const s of stages) await runStage(logContainer, s, 520);
 
@@ -1521,7 +1593,7 @@
 
         const btn = document.getElementById('ocrBtn');
         btn.disabled = true;
-        btn.innerHTML = '<span class="loading"></span>';
+        btn.innerHTML = '<span class="loading" aria-hidden="true"></span> Running...';
         document.getElementById('cancelOcrBtn').classList.remove('hidden');
 
         // Prepare result panel
@@ -1551,19 +1623,20 @@
             })
         });
 
-        // Stage complete on PROCESS, advance to RESULT
-        await triggerStageComplete('process');
-        setActiveStage('result');
-
         try {
+            // Stage complete on PROCESS, advance to RESULT
+            await triggerStageComplete('process');
+            if (ocrController.signal.aborted) { hideOverlay('ocrOverlay'); return; }
+            setActiveStage('result');
+
             await warmBackend(logContainer);
 
             const stages = [
-                'Preparing OCR payload',
-                `Selecting model: ${selectedModel}`,
-                'Submitting to OCR engine',
-                'Running text extraction',
-                'Normalizing response format',
+                'Preparing image for OCR',
+                `Using model: ${selectedModel}`,
+                'Sending to OCR service',
+                'Extracting text',
+                'Formatting output',
             ];
             for (const s of stages) await runStage(logContainer, s, 520);
 
@@ -1840,6 +1913,9 @@
     document.getElementById('reorderBtn').addEventListener('click', () => {
         document.getElementById('batchReorderOverlay').classList.remove('hidden');
     });
+    document.getElementById('batchOverlayClose').addEventListener('click', () => {
+        document.getElementById('batchReorderOverlay').classList.add('hidden');
+    });
 
     // Closed panel tabs — click to reopen
     ['input', 'process', 'result'].forEach(stage => {
@@ -1873,6 +1949,9 @@
         document.getElementById('exportDropdown').classList.add('hidden');
         document.getElementById('exportBtn').setAttribute('aria-expanded', 'false');
     });
+
+    // Initialise stripe state
+    setActiveStage('input');
 </script>
 </body>
 </html>
