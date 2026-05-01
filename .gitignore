@@ -37,3 +37,8 @@ tmp/
 build/
 dist/
 *.egg-info/
+
+# Cloudflare Pages local dev
+.dev.vars
+.wrangler/
+node_modules/

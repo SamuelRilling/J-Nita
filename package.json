@@ -1,0 +1,10 @@
+{
+    "name": "j-nita",
+    "version": "2.0.0",
+    "description": "Handwriting OCR with image conditioning",
+    "scripts": {
+        "dev": "wrangler pages dev public",
+        "deploy": "wrangler pages deploy public"
+    },
+    "private": true
+}

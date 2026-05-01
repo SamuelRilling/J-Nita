@@ -1,0 +1,9 @@
+name = "j-nita"
+compatibility_date = "2026-04-01"
+pages_build_output_dir = "public"
+
+[vars]
+# These are placeholders. Real values come from Cloudflare Pages env vars
+# in the dashboard for both Production and Preview environments.
+# Do NOT put real keys here.
+HF_SPACE_BASE = "https://samuelrilling-j-nita-hf.hf.space"

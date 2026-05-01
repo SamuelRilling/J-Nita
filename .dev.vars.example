@@ -1,0 +1,7 @@
+# Copy this to .dev.vars and fill in real values (NOT committed).
+# These mirror the secrets configured in the Cloudflare Pages dashboard.
+OCR_SPACE_API_KEY=
+AZURE_DOC_INTELLIGENCE_KEY=
+AZURE_DOC_INTELLIGENCE_ENDPOINT=
+GEMINI_API_KEY=
+HF_SPACE_BASE=https://samuelrilling-j-nita-hf.hf.space
