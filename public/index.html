@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>J-Nita v5.0 OCR Studio</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="topbar">
+    <div class="topbar-brand"><span class="mark">J-Nita</span> v5.0</div>
+    <div class="topbar-actions">
+        <span class="status-pill" id="backendStatus">Cloudflare Pages</span>
+        <button class="btn btn-ghost btn-sm" id="resetBtn">Reset</button>
+    </div>
+    <div class="topbar-stripe" aria-hidden="true">
+        <div class="stripe-seg is-active" data-seg="input"></div>
+        <div class="stripe-seg" data-seg="process"></div>
+        <div class="stripe-seg" data-seg="result"></div>
+    </div>
+</div>
+
+<div id="pipeline" data-active="input">
+
+    <!-- ── Input Column ─────────────────────────────────────── -->
+    <div class="stage-col" id="col-input" data-stage="input">
+        <div class="col-tab" id="tab-input" role="button" tabindex="0" aria-label="Open Input stage">
+            <span class="col-tab-dot"></span>
+            <span class="col-tab-label">Input</span>
+        </div>
+        <div class="col-body">
+            <div class="col-header">
+                <h2 class="col-title"><span class="col-num">1</span>Input</h2>
+                <div class="col-actions">
+                    <button class="btn btn-ghost btn-sm" id="reorderBtn" disabled title="Batch processing coming soon" aria-label="Batch file reorder (coming soon)">Reorder</button>
+                </div>
+            </div>
+            <div class="col-content" id="inputContent">
+                <input type="file" id="fileInput" accept="image/*" style="display:none" aria-label="Upload image file">
+                <div class="upload-zone" id="uploadArea" role="button" tabindex="0" aria-label="Upload image">
+                    <p class="upload-icon">↑</p>
+                    <h3>Drop or click to upload</h3>
+                    <p>Drag and drop an image to begin</p>
+                    <p class="file-types">PNG, JPG, JPEG, BMP, TIFF, WEBP</p>
+                </div>
+                <div class="input-canvas-wrapper hidden" id="inputCanvasWrapper">
+                    <canvas id="originalCanvas"></canvas>
+                    <div class="condition-btn-overlay" id="conditionBtnOverlay">
+                        <button class="btn" id="conditionBtn" aria-label="Condition image">Condition Image</button>
+                    </div>
+                </div>
+            </div>
+            <!-- Batch reorder mockup -->
+            <div class="panel-overlay hidden" id="batchReorderOverlay"
+                 role="dialog" aria-modal="true" aria-labelledby="batchOverlayTitle">
+                <div class="panel-overlay-header">
+                    <span id="batchOverlayTitle">File Order</span>
+                    <span class="coming-soon-badge">Coming soon</span>
+                    <button class="btn btn-ghost btn-sm close-btn" id="batchOverlayClose">Close</button>
+                </div>
+                <div class="batch-reorder-cards">
+                    <div class="batch-card">Document_001.jpg</div>
+                    <div class="batch-card">Document_002.jpg</div>
+                    <div class="batch-card">Document_003.jpg</div>
+                </div>
+            </div>
+            <!-- Stage complete -->
+            <div class="stage-complete-overlay" id="scOverlay-input">
+                <div class="stage-complete-banner">Stage complete!</div>
+                <div class="stage-complete-check">✓</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Process Column ───────────────────────────────────── -->
+    <div class="stage-col is-closed" id="col-process" data-stage="process">
+        <div class="col-tab" id="tab-process" role="button" tabindex="-1" aria-label="Open Condition stage">
+            <span class="col-tab-dot"></span>
+            <span class="col-tab-label">Condition</span>
+        </div>
+        <div class="col-body">
+            <div class="col-header">
+                <h2 class="col-title"><span class="col-num">2</span>Condition</h2>
+                <div class="col-actions">
+                    <button class="btn btn-ghost btn-sm" id="adjustBtn" aria-expanded="false" aria-controls="adjustDrawer">Adjust</button>
+                    <button class="btn btn-ghost btn-sm" id="advancedBtn" disabled aria-expanded="false" aria-controls="advancedPanel">Advanced</button>
+                    <button class="btn btn-ghost btn-sm" id="rerunBtn" disabled aria-label="Rerun conditioning">Rerun</button>
+                    <button class="btn btn-ghost btn-cancel btn-sm hidden" id="cancelConditionBtn" aria-label="Cancel conditioning">Cancel</button>
+                    <div class="col-actions-divider" aria-hidden="true"></div>
+                    <button class="btn btn-primary btn-sm" id="ocrBtn" disabled aria-label="Run OCR">Run OCR</button>
+                </div>
+            </div>
+            <div class="col-content">
+                <div class="canvas-container" id="processCanvasContainer">
+                    <canvas id="conditionedCanvas" style="display:none"></canvas>
+                    <div class="canvas-placeholder" id="conditionedPlaceholder">Run conditioning to see result</div>
+                    <div class="progress-overlay" id="conditionOverlay" role="status" aria-live="polite">
+                        <div class="progress-log" id="conditionLog"></div>
+                    </div>
+                </div>
+                <div class="advanced-panel" id="advancedPanel" aria-hidden="true">
+                    <div class="advanced-grid">
+                        <div class="advanced-card">
+                            <h3>Corner Detection</h3>
+                            <canvas id="boundingCanvas" class="advanced-canvas"></canvas>
+                        </div>
+                        <div class="advanced-card">
+                            <h3>Smart Crop</h3>
+                            <canvas id="cropCanvas" class="advanced-canvas"></canvas>
+                        </div>
+                        <div class="advanced-card">
+                            <h3>Filter Pass</h3>
+                            <canvas id="filterCanvas" class="advanced-canvas"></canvas>
+                        </div>
+                        <div class="advanced-card">
+                            <h3>Final Conditioned</h3>
+                            <canvas id="finalCanvas" class="advanced-canvas"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="adjust-drawer" id="adjustDrawer" aria-hidden="true">
+                    <div>
+                        <div class="drawer-label">Conditioning Strength</div>
+                        <div class="drawer-desc">Higher values apply stronger denoising. Most images work best at 5-20.</div>
+                        <div class="range-row">
+                            <input type="range" id="strength" min="0" max="100" value="10"
+                                aria-label="Conditioning strength">
+                            <span class="range-value" id="strength_value">10</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="drawer-label">PNG Compression</div>
+                        <div class="drawer-desc">0 = no compression (faster). 9 = maximum compression (smaller file).</div>
+                        <div class="range-row">
+                            <input type="range" id="png_compression" min="0" max="9" value="0"
+                                aria-label="PNG compression level">
+                            <span class="range-value" id="png_compression_value">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="stage-complete-overlay" id="scOverlay-process">
+                <div class="stage-complete-banner">Stage complete!</div>
+                <div class="stage-complete-check">✓</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Result Column ────────────────────────────────────── -->
+    <div class="stage-col is-closed" id="col-result" data-stage="result">
+        <div class="col-tab" id="tab-result" role="button" tabindex="-1" aria-label="Open OCR Result stage">
+            <span class="col-tab-dot"></span>
+            <span class="col-tab-label">Result</span>
+        </div>
+        <div class="col-body">
+            <div class="col-header">
+                <h2 class="col-title"><span class="col-num">3</span>OCR</h2>
+                <div class="col-actions">
+                    <button class="btn btn-ghost btn-cancel btn-sm hidden" id="cancelOcrBtn" aria-label="Cancel OCR">Cancel</button>
+                    <div class="segmented-control" id="outputType" role="group" aria-label="Output format">
+                        <button class="seg-btn active" data-mode="markdown">Markdown</button>
+                        <button class="seg-btn" data-mode="plain">Plain</button>
+                        <button class="seg-btn" data-mode="preview">Preview</button>
+                    </div>
+                    <div class="dropdown-anchor">
+                        <button class="btn btn-ghost btn-sm" id="apiBtn" aria-expanded="false" aria-haspopup="true" aria-label="Select OCR model">Model: <span id="apiModelLabel">None</span> ▾</button>
+                        <div class="inline-dropdown hidden" id="apiDropdown" role="menu">
+                            <div id="apiModelList"></div>
+                        </div>
+                    </div>
+                    <div class="dropdown-anchor">
+                        <button class="btn btn-secondary btn-sm" id="exportBtn" aria-expanded="false" aria-haspopup="true">Export</button>
+                        <div class="inline-dropdown hidden" id="exportDropdown" role="menu">
+                            <button class="dropdown-item" id="exportCopy">Copy to clipboard</button>
+                            <button class="dropdown-item" id="exportMd">Download .md</button>
+                            <button class="dropdown-item" id="exportPdf">Download .pdf</button>
+                            <button class="dropdown-item" id="exportDocx">Download .docx</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-content">
+                <div class="text-output" id="textOutput">
+                    <div class="text-content empty" id="textContent">OCR results will appear here</div>
+                    <div class="progress-overlay" id="ocrOverlay" role="status" aria-live="polite">
+                        <div class="progress-log" id="ocrLog"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="stage-complete-overlay" id="scOverlay-result">
+                <div class="stage-complete-banner">Stage complete!</div>
+                <div class="stage-complete-check">✓</div>
+            </div>
+        </div>
+    </div>
+
+</div><!-- #pipeline -->
+
+<div class="toast-container" id="toastContainer" aria-live="assertive"></div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
