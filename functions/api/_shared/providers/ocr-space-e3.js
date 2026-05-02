@@ -46,6 +46,7 @@ export const ocrSpaceEngine3 = {
   ],
 
   /**
+   * Run OCR on an image via OCR.space Engine 3.
    * @param {ArrayBuffer} imageBuffer
    * @param {{language?:string, scale?:boolean, isTable?:boolean}} options
    * @param {Env} env
@@ -64,6 +65,7 @@ export const ocrSpaceEngine3 = {
     formData.append("isTable", options.isTable ? "true" : "false");
     formData.append("isOverlayRequired", "false");
     formData.append("detectOrientation", "true");
+    formData.append("filetype", "PNG");
 
     const start = Date.now();
     const response = await fetch("https://api.ocr.space/parse/image", {
@@ -100,7 +102,10 @@ export const ocrSpaceEngine3 = {
     };
   },
 
-  /** @param {Env} env */
+  /**
+   * Health check.
+   * @param {Env} env
+   */
   async ping(env) {
     const start = Date.now();
 
@@ -112,31 +117,51 @@ export const ocrSpaceEngine3 = {
       };
     }
 
-    // No dedicated health endpoint — send a minimal request with their sample image.
-    // Counts against quota; keep ping calls infrequent.
+    // Tiny 8x8 white PNG, base64-encoded inline.
+    const tinyPngBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+    const binary = atob(tinyPngBase64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+
     try {
       const formData = new FormData();
+      formData.append("file", new Blob([bytes], { type: "image/png" }), "ping.png");
       formData.append("apikey", env.OCR_SPACE_API_KEY);
-      formData.append("url", "https://ocr.space/Content/Images/userexample-1.jpg");
-      formData.append("OCREngine", "1");  // Engine 1 accepts the sample JPEG; ping just verifies the key
+      formData.append("OCREngine", "1");
       formData.append("isOverlayRequired", "false");
 
+      console.log("DEBUG ping: sending request");
       const response = await fetch("https://api.ocr.space/parse/image", {
         method: "POST",
         body: formData
       });
       const latencyMs = Date.now() - start;
 
+      console.log("DEBUG ping: response status =", response.status);
+      
+      // Read the body regardless of status, so we can see what OCR.space said
+      const bodyText = await response.text();
+      console.log("DEBUG ping: response body =", bodyText.slice(0, 500));
+
       if (!response.ok) {
-        return { ok: false, latencyMs, reason: `HTTP ${response.status}` };
+        return { ok: false, latencyMs, reason: `HTTP ${response.status}: ${bodyText.slice(0, 200)}` };
       }
 
-      const data = await response.json();
+      let data;
+      try {
+        data = JSON.parse(bodyText);
+      } catch (e) {
+        return { ok: false, latencyMs, reason: `Invalid JSON response: ${bodyText.slice(0, 100)}` };
+      }
+
       if (data.IsErroredOnProcessing) {
         const errMsg = Array.isArray(data.ErrorMessage)
           ? data.ErrorMessage[0]
           : (data.ErrorMessage || "Unknown error");
-        return { ok: false, latencyMs, reason: errMsg };
+        if (/api\s*key|unauthorized|invalid/i.test(errMsg)) {
+          return { ok: false, latencyMs, reason: errMsg };
+        }
+        return { ok: true, latencyMs };
       }
 
       return { ok: true, latencyMs };
@@ -148,4 +173,5 @@ export const ocrSpaceEngine3 = {
       };
     }
   }
+  
 };

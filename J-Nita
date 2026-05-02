@@ -1,0 +1,10 @@
+[33m86c9551[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Merge pull request #11 from SamuelRilling/revert-10-phase-1-hf-space-conditioning
+[33m310182b[m[33m ([m[1;31morigin/revert-10-phase-1-hf-space-conditioning[m[33m)[m Revert "Phase 1 hf space conditioning"
+[33m6ca21c4[m Merge pull request #10 from SamuelRilling/phase-1-hf-space-conditioning
+[33m9ffd365[m feat: implement Gradio app for image conditioning Space
+[33m599b974[m feat: copy image_conditioner and orientation_validator into Space (byte-identical)
+[33md1afffc[m feat: scaffold hf-spaces/conditioning directory with metadata
+[33ma5d2d0d[m critique fixes: font, discoverability, heading structure, action hierarchy
+[33m50cc49e[m audit/clarify/polish: accessibility, motion, copy, stripe indicator
+[33m6b40a17[m harden: cancel buttons, clipboard fallback, Escape key
+[33mcbabcde[m feat: kinetic 3-panel horizontal column layout (impeccable layout)
