@@ -815,6 +815,79 @@ body {
     justify-content: flex-end;
 }
 
+/* ── Provider tier label ─────────────────────────────── */
+.tier-label {
+    font-size: 0.72em;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 6px 14px 2px;
+}
+
+/* ── Provider tag pills ──────────────────────────────── */
+.model-tags {
+    display: flex;
+    gap: 3px;
+    flex-wrap: wrap;
+}
+
+.model-tag {
+    font-size: 0.68em;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: var(--paper-warm);
+    border: 1px solid var(--hairline);
+    color: var(--muted);
+    white-space: nowrap;
+}
+
+/* ── Provider parameter panel ────────────────────────── */
+.provider-params {
+    padding: 6px 14px 8px;
+    background: var(--paper-warm);
+    border-top: 1px solid var(--hairline-soft);
+}
+
+.param-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    font-size: 0.82em;
+}
+
+.param-label {
+    flex: 1;
+    font-weight: 600;
+    color: var(--ink-soft);
+}
+
+.param-select {
+    font-size: 0.82em;
+    padding: 3px 6px;
+    border: 1px solid var(--hairline);
+    border-radius: 5px;
+    background: var(--surface);
+    color: var(--ink);
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.param-toggle-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.param-toggle {
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+    accent-color: var(--stage-result);
+}
+
 /* ── Batch reorder mockup ────────────────────────────── */
 .panel-overlay {
     position: absolute;

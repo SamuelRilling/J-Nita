@@ -2,7 +2,7 @@ import {
     getActiveStage, setActiveStage, triggerStageComplete,
     resetPipelineState, wait
 } from './pipeline-state.js';
-import { runOcr } from './api-client.js';
+import { runOcr, pingProvider } from './api-client.js';
 import { providers } from './provider-registry.js';
 
 // ── State ─────────────────────────────────────────────────
@@ -15,6 +15,10 @@ let outputMode      = 'markdown';
 let selectedProvider = null;
 let conditionController = null;
 let ocrController       = null;
+
+// Per-provider parameter values (keyed by provider id) and health-check status
+const providerParamValues = {};
+const providerStatus = {};
 
 // ── Utility ───────────────────────────────────────────────
 function humanizeError(err) {
@@ -334,7 +338,7 @@ async function processOCR() {
         ];
         for (const s of stages) await runStage(logContainer, s, 520);
 
-        const data = await runOcr(selectedProvider || 'no-provider', conditionedImage, {});
+        const data = await runOcr(selectedProvider || 'no-provider', conditionedImage, providerParamValues[selectedProvider] || {});
         ocrRawText = data.markdown || data.text || '';
         hideOverlay('ocrOverlay');
         renderOutputText();
@@ -417,20 +421,143 @@ function renderApiDropdown() {
         const msg = document.createElement('div');
         msg.className = 'dropdown-item';
         msg.style.cssText = 'cursor:default; color: var(--muted); font-style: italic;';
-        msg.textContent = 'No providers configured. This will be filled in Phase 3.';
+        msg.textContent = 'No providers configured.';
         list.appendChild(msg);
         return;
     }
-    providers.forEach(p => {
-        const item = document.createElement('div');
-        item.className = `api-model-item${p.id === selectedProvider ? ' is-selected' : ''}`;
-        item.dataset.provider = p.id;
-        item.innerHTML = `
-            <span class="model-status-icon model-status-untested">?</span>
-            <span class="model-name">${p.displayName}</span>`;
-        item.addEventListener('click', () => selectProvider(p.id));
-        list.appendChild(item);
+
+    // Group by tier; render free before paid
+    const tiers = {};
+    providers.forEach(p => { (tiers[p.tier] = tiers[p.tier] || []).push(p); });
+    const tierOrder = ['free', 'paid'];
+    const activeKeys = tierOrder.filter(t => tiers[t]);
+    const multiTier = activeKeys.length > 1;
+
+    activeKeys.forEach(tier => {
+        const group = document.createElement('div');
+
+        if (multiTier) {
+            const header = document.createElement('div');
+            header.className = 'tier-label';
+            header.textContent = tier === 'free' ? 'Free' : 'Paid';
+            group.appendChild(header);
+        }
+
+        tiers[tier].forEach(p => {
+            // Initialise param values from spec defaults on first render
+            if (!providerParamValues[p.id]) {
+                providerParamValues[p.id] = {};
+                (p.parameters || []).forEach(spec => {
+                    providerParamValues[p.id][spec.key] = spec.default;
+                });
+            }
+
+            const status = providerStatus[p.id] || 'untested';
+            const statusChar = { untested: '?', testing: '…', success: '✓', failed: '✗' }[status] || '?';
+            const isSelected = p.id === selectedProvider;
+
+            const item = document.createElement('div');
+            item.className = `api-model-item${isSelected ? ' is-selected' : ''}`;
+            item.dataset.provider = p.id;
+
+            const icon = document.createElement('span');
+            icon.className = `model-status-icon model-status-${status}`;
+            icon.textContent = statusChar;
+            item.appendChild(icon);
+
+            const nameEl = document.createElement('span');
+            nameEl.className = 'model-name';
+            nameEl.textContent = p.displayName;
+            item.appendChild(nameEl);
+
+            if (p.qualitativeTags && p.qualitativeTags.length) {
+                const tags = document.createElement('span');
+                tags.className = 'model-tags';
+                p.qualitativeTags.forEach(tag => {
+                    const pill = document.createElement('span');
+                    pill.className = 'model-tag';
+                    pill.textContent = tag;
+                    tags.appendChild(pill);
+                });
+                item.appendChild(tags);
+            }
+
+            const testBtn = document.createElement('button');
+            testBtn.className = 'btn btn-xs btn-ghost';
+            testBtn.textContent = 'Test';
+            testBtn.addEventListener('click', e => { e.stopPropagation(); testProvider(p.id); });
+            item.appendChild(testBtn);
+
+            item.addEventListener('click', () => selectProvider(p.id));
+            group.appendChild(item);
+
+            // Parameter panel — shown only for the selected provider
+            if (isSelected && p.parameters && p.parameters.length) {
+                const paramsPanel = document.createElement('div');
+                paramsPanel.className = 'provider-params';
+                p.parameters.forEach(spec => {
+                    paramsPanel.appendChild(renderParameter(spec, providerParamValues[p.id][spec.key], val => {
+                        providerParamValues[p.id][spec.key] = val;
+                    }));
+                });
+                group.appendChild(paramsPanel);
+            }
+        });
+
+        list.appendChild(group);
     });
+}
+
+function renderParameter(spec, currentValue, onChange) {
+    const row = document.createElement('div');
+    row.className = 'param-row';
+    if (spec.help) row.title = spec.help;
+
+    const label = document.createElement('span');
+    label.className = 'param-label';
+    label.textContent = spec.label;
+    row.appendChild(label);
+
+    if (spec.type === 'select') {
+        const sel = document.createElement('select');
+        sel.className = 'param-select';
+        (spec.options || []).forEach(opt => {
+            const option = document.createElement('option');
+            option.value = opt.value;
+            option.textContent = opt.label;
+            if (opt.value === currentValue) option.selected = true;
+            sel.appendChild(option);
+        });
+        sel.addEventListener('change', () => onChange(sel.value));
+        row.appendChild(sel);
+    } else if (spec.type === 'toggle') {
+        const lbl = document.createElement('label');
+        lbl.className = 'param-toggle-label';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.className = 'param-toggle';
+        cb.checked = !!currentValue;
+        cb.addEventListener('change', () => onChange(cb.checked));
+        lbl.appendChild(cb);
+        row.appendChild(lbl);
+    }
+
+    return row;
+}
+
+async function testProvider(id) {
+    providerStatus[id] = 'testing';
+    renderApiDropdown();
+    try {
+        const result = await pingProvider(id);
+        providerStatus[id] = result.ok ? 'success' : 'failed';
+        if (!result.ok && result.reason) {
+            showToast(`${id}: ${result.reason}`, 'error');
+        }
+    } catch {
+        providerStatus[id] = 'failed';
+    }
+    renderApiDropdown();
 }
 
 function selectProvider(id) {
@@ -438,7 +565,7 @@ function selectProvider(id) {
     const p = providers.find(pr => pr.id === id);
     document.getElementById('apiModelLabel').textContent = p ? p.displayName.split(' ')[0] : id;
     renderApiDropdown();
-    showToast(`Provider: ${id}`, 'info');
+    showToast(`Provider: ${p ? p.displayName : id}`, 'info');
 }
 
 // ── Panel toggles ─────────────────────────────────────────
