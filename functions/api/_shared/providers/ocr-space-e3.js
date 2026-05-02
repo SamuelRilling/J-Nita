@@ -118,7 +118,7 @@ export const ocrSpaceEngine3 = {
       const formData = new FormData();
       formData.append("apikey", env.OCR_SPACE_API_KEY);
       formData.append("url", "https://ocr.space/Content/Images/userexample-1.jpg");
-      formData.append("OCREngine", "3");
+      formData.append("OCREngine", "1");  // Engine 1 accepts the sample JPEG; ping just verifies the key
       formData.append("isOverlayRequired", "false");
 
       const response = await fetch("https://api.ocr.space/parse/image", {
