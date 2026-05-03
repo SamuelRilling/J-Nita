@@ -130,18 +130,18 @@ export const ocrSpaceEngine3 = {
       formData.append("OCREngine", "1");
       formData.append("isOverlayRequired", "false");
 
-      console.log("DEBUG ping: sending request");
+      
       const response = await fetch("https://api.ocr.space/parse/image", {
         method: "POST",
         body: formData
       });
       const latencyMs = Date.now() - start;
 
-      console.log("DEBUG ping: response status =", response.status);
+      
       
       // Read the body regardless of status, so we can see what OCR.space said
       const bodyText = await response.text();
-      console.log("DEBUG ping: response body =", bodyText.slice(0, 500));
+      
 
       if (!response.ok) {
         return { ok: false, latencyMs, reason: `HTTP ${response.status}: ${bodyText.slice(0, 200)}` };

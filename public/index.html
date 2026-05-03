@@ -54,6 +54,7 @@
                         <button class="btn" id="conditionBtn" aria-label="Condition image">Condition Image</button>
                     </div>
                 </div>
+                <div class="file-size-bar hidden" id="fileSizeBar">Original: <span id="fileSizeLabel"></span></div>
             </div>
             <!-- Batch reorder mockup -->
             <div class="panel-overlay hidden" id="batchReorderOverlay"
@@ -95,6 +96,7 @@
                     <button class="btn btn-primary btn-sm" id="ocrBtn" disabled aria-label="Run OCR">Run OCR</button>
                 </div>
             </div>
+            <div class="size-banner hidden" id="sizeBanner"></div>
             <div class="col-content">
                 <div class="canvas-container" id="processCanvasContainer">
                     <canvas id="conditionedCanvas" style="display:none"></canvas>
@@ -102,6 +104,11 @@
                     <div class="progress-overlay" id="conditionOverlay" role="status" aria-live="polite">
                         <div class="progress-log" id="conditionLog"></div>
                     </div>
+                </div>
+                <div class="conditioned-size-bar hidden" id="conditionedSizeBar">
+                    <span>Conditioned: <span id="conditionedSizeLabel"></span></span>
+                    <span class="size-badge" id="conditionedSizeBadge"></span>
+                    <div class="size-hint hidden" id="sizeHint">Try lowering target dimensions in the parameters panel and re-conditioning.</div>
                 </div>
                 <div class="advanced-panel" id="advancedPanel" aria-hidden="true">
                     <div class="advanced-grid">

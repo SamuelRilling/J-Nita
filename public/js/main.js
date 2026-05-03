@@ -20,7 +20,21 @@ let ocrController       = null;
 const providerParamValues = {};
 const providerStatus = {};
 
+const UPLOAD_HARD_MAX_BYTES    = 10 * 1024 * 1024;   // 10 MB - reject before upload
+const OCR_PROVIDER_LIMIT_BYTES = 1000 * 1024;         // 1000 KB - Run OCR ceiling
+
 // ── Utility ───────────────────────────────────────────────
+function formatSize(bytes) {
+    if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    return Math.round(bytes / 1024) + ' KB';
+}
+
+function base64SizeBytes(base64String) {
+    const b64 = base64String.includes(',') ? base64String.split(',', 2)[1] : base64String;
+    const padding = b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0;
+    return Math.floor(b64.length * 3 / 4) - padding;
+}
+
 function humanizeError(err) {
     const msg = err.message || '';
     if (/fetch|network|failed to fetch/i.test(msg)) return 'Network error. Check your connection.';
@@ -192,6 +206,10 @@ function handleFile(file) {
         showToast('Please upload an image file', 'error');
         return;
     }
+    if (file.size > UPLOAD_HARD_MAX_BYTES) {
+        showToast(`File is ${formatSize(file.size)}. Maximum upload size is 10 MB. Please resize before uploading.`, 'error');
+        return;
+    }
     const reader = new FileReader();
     reader.onload = e => {
         const img = new Image();
@@ -206,6 +224,9 @@ function handleFile(file) {
             canvas.style.display = 'block';
             drawImageToCanvas(img, canvas);
 
+            document.getElementById('fileSizeLabel').textContent = formatSize(file.size);
+            document.getElementById('fileSizeBar').classList.remove('hidden');
+
             const overlay = document.getElementById('conditionBtnOverlay');
             overlay.classList.add('has-image');
             document.getElementById('conditionBtn').disabled = false;
@@ -215,10 +236,40 @@ function handleFile(file) {
             document.getElementById('ocrBtn').disabled = true;
             document.getElementById('rerunBtn').disabled = true;
             document.getElementById('advancedBtn').disabled = true;
+            document.getElementById('conditionedSizeBar').classList.add('hidden');
+
+            const banner = document.getElementById('sizeBanner');
+            if (file.size > OCR_PROVIDER_LIMIT_BYTES) {
+                banner.textContent = `File is ${formatSize(file.size)}. Conditioning will compress it for OCR (1 MB limit). Click 'Condition Image' to continue.`;
+                banner.classList.remove('hidden');
+            } else {
+                banner.classList.add('hidden');
+            }
         };
         img.src = e.target.result;
     };
     reader.readAsDataURL(file);
+}
+
+function updateConditionedSizeIndicator(base64Image) {
+    const bytes = base64SizeBytes(base64Image);
+    document.getElementById('conditionedSizeLabel').textContent = formatSize(bytes);
+    const badge = document.getElementById('conditionedSizeBadge');
+    const hint  = document.getElementById('sizeHint');
+    document.getElementById('conditionedSizeBar').classList.remove('hidden');
+    document.getElementById('sizeBanner').classList.add('hidden');
+
+    if (bytes <= OCR_PROVIDER_LIMIT_BYTES) {
+        badge.textContent = '✓ ready for OCR';
+        badge.className = 'size-badge ok';
+        hint.classList.add('hidden');
+        document.getElementById('ocrBtn').disabled = false;
+    } else {
+        badge.textContent = '✗ still over 1 MB limit';
+        badge.className = 'size-badge over';
+        hint.classList.remove('hidden');
+        document.getElementById('ocrBtn').disabled = true;
+    }
 }
 
 // ── Condition image ───────────────────────────────────────
@@ -282,7 +333,7 @@ async function conditionImage(skipAnimation = false) {
             img.onload = () => {
                 conditionedImageElement = img;
                 displayConditionedImage(img);
-                document.getElementById('ocrBtn').disabled = false;
+                updateConditionedSizeIndicator(conditionedImage);
                 document.getElementById('rerunBtn').disabled = false;
                 document.getElementById('advancedBtn').disabled = false;
                 renderAdvancedCanvases();
@@ -641,6 +692,10 @@ function resetAll() {
     document.getElementById('conditionLog').innerHTML = '';
     document.getElementById('adjustDrawer').classList.remove('open');
     resetAdvancedPanel();
+
+    document.getElementById('fileSizeBar').classList.add('hidden');
+    document.getElementById('sizeBanner').classList.add('hidden');
+    document.getElementById('conditionedSizeBar').classList.add('hidden');
 
     const tc = document.getElementById('textContent');
     tc.textContent = 'OCR results will appear here';

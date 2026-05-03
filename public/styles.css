@@ -30,6 +30,11 @@
     --error:        var(--signal);
     --error-tint:   var(--signal-tint);
 
+    --size-ok:        var(--stage-result);
+    --size-ok-tint:   var(--stage-result-tint);
+    --size-over:      var(--signal);
+    --size-over-tint: var(--signal-tint);
+
     --shadow-card:  0 1px 2px oklch(22% 0.02 270 / 0.04), 0 8px 24px oklch(22% 0.02 270 / 0.06);
     --shadow-lift:  0 6px 20px oklch(22% 0.02 270 / 0.10);
     --shadow-drop:  0 4px 12px oklch(22% 0.02 270 / 0.14);
@@ -1018,6 +1023,65 @@ body {
     font-weight: 600;
     color: var(--ink-soft);
     margin-bottom: 4px;
+}
+
+/* ── Size feedback ───────────────────────────────────── */
+.file-size-bar {
+    flex-shrink: 0;
+    padding: 5px 14px;
+    font-size: 0.78em;
+    color: var(--ink-soft);
+    background: var(--paper-warm);
+    border-top: 1px solid var(--hairline);
+}
+
+.size-banner {
+    flex-shrink: 0;
+    padding: 8px 14px;
+    font-size: 0.83em;
+    line-height: 1.4;
+    background: var(--warning-tint);
+    color: oklch(38% 0.12 75);
+    border-bottom: 1px solid oklch(82% 0.10 75);
+}
+
+.conditioned-size-bar {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px 14px;
+    font-size: 0.82em;
+    color: var(--ink-soft);
+    background: var(--surface);
+    border-top: 1px solid var(--hairline);
+}
+
+.size-badge {
+    font-weight: 700;
+    font-size: 0.9em;
+    padding: 1px 8px;
+    border-radius: 999px;
+}
+
+.size-badge.ok {
+    background: var(--size-ok-tint);
+    color: oklch(35% 0.10 150);
+    border: 1px solid var(--stage-result-edge);
+}
+
+.size-badge.over {
+    background: var(--size-over-tint);
+    color: oklch(38% 0.16 28);
+    border: 1px solid oklch(82% 0.08 28);
+}
+
+.size-hint {
+    width: 100%;
+    font-size: 0.88em;
+    color: var(--muted);
+    margin-top: 2px;
 }
 
 /* ── Misc ────────────────────────────────────────────── */
